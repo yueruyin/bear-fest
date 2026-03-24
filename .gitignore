@@ -1,0 +1,71 @@
+# 上传文件目录
+uploads/
+app/api/uploads/
+
+# Python 缓存文件
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 分发/打包
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 虚拟环境
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# 日志文件
+*.log
+
+# 环境变量文件
+.env
+.env.local
+.cursor/
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# 临时文件
+*.tmp
+*.temp
+
+/app/Volumes/WD_INN_2T/Documents/大模型文件/bge-large-zh-v1.5
+
+# uv文件
+uv.lock
+pyproject.toml
+.python-version
+
+# pnpm文件
+frontend/pnpm-lock.yaml
