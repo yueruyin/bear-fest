@@ -16,6 +16,7 @@ Bear Fest 是一个活动服务平台示例项目，包含：
 bear-fest/
 ├── app/                 # FastAPI 后端代码（API、模型、Schema、数据库初始化）
 ├── frontend/            # React 前端代码
+│   └── public/chongqing/  # 重庆城市相关图片（首页 Hero 等静态资源，可按需增删）
 ├── docs/                # 产品/系统设计文档与素材
 ├── app.db               # SQLite 数据库文件（运行后自动生成/更新）
 └── requirements.txt     # 后端 Python 依赖

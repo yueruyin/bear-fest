@@ -13,7 +13,7 @@ def init_db():
         if db.query(SiteConfig).count() == 0:
             db.add(
                 SiteConfig(
-                    home_hero_title="小熊集市活动服务平台",
+                    home_hero_title="小熊团队",
                     home_hero_subtitle="让每一次活动都成为真正的城市记忆",
                     service_highlights='["创意设计","场景搭建","供应链协作","活动传播","现场运营"]',
                     contact_channels='{"email":"biz@example.com","wechat":"xiaoxiong_market"}',
