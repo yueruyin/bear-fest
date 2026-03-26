@@ -1,12 +1,23 @@
-from fastapi import Depends, FastAPI, HTTPException, Query
-from sqlalchemy.orm import Session
-
-from app.database import get_db
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from app.api.cases import router as cases_router
+from app.api.health import router as health_router
+from app.api.leads import router as leads_router
+from app.api.merchant_signups import router as merchant_signups_router, UPLOADS_ROOT
+from app.api.site_config import router as site_config_router
 from app.init_db import init_db
-from app.model import Case, Lead, SiteConfig
-from app.schema import CaseDetail, CaseListItem, LeadCreate, LeadCreateOut, SiteConfigOut
 
 app = FastAPI(title="Bear Fest Backend", version="0.1.0")
+app.mount("/uploads", StaticFiles(directory=str(UPLOADS_ROOT)), name="uploads")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.on_event("startup")
@@ -14,62 +25,8 @@ def on_startup():
     init_db()
 
 
-@app.get("/health")
-def health_check():
-    return {"status": "ok"}
-
-
-@app.get("/api/v1/site-config", response_model=SiteConfigOut)
-def get_site_config(db: Session = Depends(get_db)):
-    config = db.query(SiteConfig).order_by(SiteConfig.id.asc()).first()
-    if not config:
-        raise HTTPException(status_code=404, detail="site config not found")
-    return config
-
-
-@app.get("/api/v1/cases", response_model=list[CaseListItem])
-def list_cases(
-    event_type: str | None = Query(default=None),
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=10, ge=1, le=50),
-    db: Session = Depends(get_db),
-):
-    query = db.query(Case).filter(Case.publish_status == "published")
-    if event_type:
-        query = query.filter(Case.event_type == event_type)
-
-    offset = (page - 1) * page_size
-    return (
-        query.order_by(Case.published_at.desc().nullslast(), Case.id.desc())
-        .offset(offset)
-        .limit(page_size)
-        .all()
-    )
-
-
-@app.get("/api/v1/cases/{slug}", response_model=CaseDetail)
-def get_case_detail(slug: str, db: Session = Depends(get_db)):
-    case = (
-        db.query(Case)
-        .filter(Case.slug == slug, Case.publish_status == "published")
-        .first()
-    )
-    if not case:
-        raise HTTPException(status_code=404, detail="case not found")
-    return case
-
-
-@app.post("/api/v1/leads", response_model=LeadCreateOut, status_code=201)
-def create_lead(payload: LeadCreate, db: Session = Depends(get_db)):
-    lead = Lead(
-        name=payload.name,
-        company=payload.company,
-        phone_or_email=payload.phone_or_email,
-        demand_desc=payload.demand_desc,
-        source_page=payload.source_page,
-        status="new",
-    )
-    db.add(lead)
-    db.commit()
-    db.refresh(lead)
-    return lead
+app.include_router(health_router)
+app.include_router(site_config_router)
+app.include_router(cases_router)
+app.include_router(leads_router)
+app.include_router(merchant_signups_router)

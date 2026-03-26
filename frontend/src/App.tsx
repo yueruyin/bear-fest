@@ -5,6 +5,7 @@ import {
   CasesPage,
   ContactPage,
   HomePage,
+  MerchantSignupPage,
   ServicesPage,
 } from './pages'
 
@@ -17,6 +18,7 @@ function App() {
         <Route path="/cases" element={<CasesPage />} />
         <Route path="/cases/:slug" element={<CaseDetailPage />} />
         <Route path="/about" element={<AboutPage />} />
+        <Route path="/merchant-signup" element={<MerchantSignupPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="*" element={<HomePage />} />
       </Routes>

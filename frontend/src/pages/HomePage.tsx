@@ -42,6 +42,7 @@ export function HomePage() {
         <div className="container">
           <p className="eyebrow">城市线下活动生态</p>
           <h1>{config?.home_hero_title || '小熊团队'}</h1>
+          <h2 className="hero-slogan">让每个灵感，都在现场被看见。</h2>
           <p className="hero-sub">
             {config?.home_hero_subtitle ||
               '从创意设计到现场运营，一站式打造城市记忆级活动体验。'}

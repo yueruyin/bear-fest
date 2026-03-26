@@ -27,3 +27,10 @@ export type LeadForm = {
   phone_or_email: string
   demand_desc: string
 }
+
+export type MerchantSignupForm = {
+  contact_name: string
+  brand_name: string
+  phone_or_email: string
+  business_details: string
+}

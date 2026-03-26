@@ -1,0 +1,20 @@
+app:
+  env: test
+  title: "Bear Fest Backend"
+  version: "0.1.0"
+
+server:
+  host: "127.0.0.1"
+  port: 8001
+
+database:
+  url: "sqlite:///./app_test.db"
+
+uploads:
+  root_dir: "app/uploads"
+  merchant_dir: "merchant"
+
+cors:
+  allow_origins: ["*"]
+  allow_credentials: true
+
