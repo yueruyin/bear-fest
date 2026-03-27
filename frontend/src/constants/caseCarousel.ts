@@ -1,6 +1,6 @@
 export const CASE_CAROUSEL_IMAGES = [
   {
-    src: '/case-carousel/page21_img01.jpeg',
+    src: '/case-carousel/page21_img.jpeg',
     alt: '小熊团队代表案例轮播图 1',
     caption: '城市嘉年华活动现场',
   },

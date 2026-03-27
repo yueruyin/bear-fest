@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Layout } from '../components/Layout'
 import { useCases } from '../hooks/useCases'
 
 export function CasesPage() {
-  const [type, setType] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialType = searchParams.get('type') || searchParams.get('event_type') || ''
+  const [type, setType] = useState(initialType)
   const cases = useCases(type)
 
   return (
@@ -24,7 +26,14 @@ export function CasesPage() {
               <button
                 key={value || 'all'}
                 className={`chip ${type === value ? 'active' : ''}`}
-                onClick={() => setType(value)}
+                onClick={() => {
+                  setType(value)
+                  if (!value) {
+                    setSearchParams({})
+                    return
+                  }
+                  setSearchParams({ type: value })
+                }}
               >
                 {label}
               </button>

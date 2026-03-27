@@ -1,14 +1,78 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Layout } from '../components/Layout'
-import { CASE_CAROUSEL_IMAGES } from '../constants/caseCarousel'
 import { useCases } from '../hooks/useCases'
 import { useSiteConfig } from '../hooks/useSiteConfig'
+
+const HOME_CASE_TYPES = [
+  { key: 'sports', label: '赛事' },
+  { key: 'carnival', label: '嘉年华' },
+  { key: 'market', label: '潮流集市' },
+  { key: 'annual', label: '企业年会' },
+  { key: 'brand', label: '品牌活动' },
+] as const
+
+type HomeCaseTypeKey = (typeof HOME_CASE_TYPES)[number]['key']
+
+const HOME_CASE_TYPE_FALLBACK_IMAGE: Record<HomeCaseTypeKey, string> = {
+  sports: '/case-carousel/page18_img01.jpeg',
+  carnival: '/case-carousel/page22_img01.jpeg',
+  market: '/case-carousel/page30_img01.jpeg',
+  annual: '/case-carousel/page12_img01.jpeg',
+  brand: '/case-carousel/page25_img01.jpeg',
+}
+
+const HOME_CASE_TYPE_FALLBACK_CONTENT: Record<
+  HomeCaseTypeKey,
+  { title: string; summary: string }
+> = {
+  sports: {
+    title: '城市赛事嘉年华执行案例',
+    summary: '围绕赛事节点完成舞台统筹、互动动线与现场运营，提升参与体验与传播热度。',
+  },
+  carnival: {
+    title: '城市嘉年华主题场景案例',
+    summary: '结合节庆主题打造沉浸式现场，覆盖创意装置、活动流程与品牌互动体验。',
+  },
+  market: {
+    title: '潮流集市空间策划案例',
+    summary: '从市集主题定位到摊位组合与导流设计，构建高停留、高转化的线下消费场景。',
+  },
+  annual: {
+    title: '企业年会全案执行案例',
+    summary: '提供年会创意、舞美搭建、流程控场与传播支持，保障活动高质量落地。',
+  },
+  brand: {
+    title: '品牌活动整合营销案例',
+    summary: '围绕新品发布与品牌节点，打通活动策划、内容传播与线下互动闭环。',
+  },
+}
+
+function normalizeEventType(value: string): HomeCaseTypeKey | null {
+  const v = (value || '').trim().toLowerCase()
+  if (!v) return null
+  if (
+    v === 'sports' ||
+    v === 'carnival' ||
+    v === 'market' ||
+    v === 'annual' ||
+    v === 'brand'
+  ) {
+    return v
+  }
+
+  if (value === '赛事') return 'sports'
+  if (value === '嘉年华') return 'carnival'
+  if (value === '潮流集市') return 'market'
+  if (value === '企业年会') return 'annual'
+  if (value === '品牌活动') return 'brand'
+
+  return null
+}
 
 export function HomePage() {
   const config = useSiteConfig()
   const cases = useCases()
-  const [activeSlide, setActiveSlide] = useState(0)
   const highlights = useMemo(() => {
     if (!config?.service_highlights) return []
     try {
@@ -18,23 +82,23 @@ export function HomePage() {
     }
   }, [config])
 
-  useEffect(() => {
-    if (CASE_CAROUSEL_IMAGES.length <= 1) return
-    const timer = window.setInterval(() => {
-      setActiveSlide((prev) => (prev + 1) % CASE_CAROUSEL_IMAGES.length)
-    }, 5000)
-    return () => window.clearInterval(timer)
-  }, [])
+  const casesByType = useMemo(() => {
+    const buckets: Record<HomeCaseTypeKey, typeof cases> = {
+      sports: [],
+      carnival: [],
+      market: [],
+      annual: [],
+      brand: [],
+    }
 
-  const toPrevSlide = () => {
-    setActiveSlide((prev) =>
-      prev === 0 ? CASE_CAROUSEL_IMAGES.length - 1 : prev - 1,
-    )
-  }
+    for (const c of cases) {
+      const key = normalizeEventType(c.event_type)
+      if (!key) continue
+      buckets[key].push(c)
+    }
 
-  const toNextSlide = () => {
-    setActiveSlide((prev) => (prev + 1) % CASE_CAROUSEL_IMAGES.length)
-  }
+    return buckets
+  }, [cases])
 
   return (
     <Layout>
@@ -99,97 +163,55 @@ export function HomePage() {
       <section className="section section-muted">
         <div className="container">
           <h2>代表案例</h2>
-          <div
-            className="case-carousel"
-            role="region"
-            aria-roledescription="轮播"
-            aria-label="代表案例现场图"
-          >
-            <div className="case-carousel-viewport">
-              <div className="case-carousel-track">
-                {CASE_CAROUSEL_IMAGES.map((item, index) => (
-                  <figure
-                    key={item.src}
-                    className={`case-slide ${index === activeSlide ? 'active' : ''}`}
-                    aria-hidden={index !== activeSlide}
-                  >
-                    <div className="case-slide-media">
+          <div className="case-type-sections" role="list">
+            {HOME_CASE_TYPES.map((t) => {
+              const items = casesByType[t.key] || []
+              const hero = items[0]
+              const heroImage = HOME_CASE_TYPE_FALLBACK_IMAGE[t.key]
+              const heroTitle = hero?.title || HOME_CASE_TYPE_FALLBACK_CONTENT[t.key].title
+              const heroSummary =
+                hero?.summary || HOME_CASE_TYPE_FALLBACK_CONTENT[t.key].summary
+              const heroLink = hero ? `/cases/${hero.slug}` : `/cases?type=${t.key}`
+              const heroCta = hero ? '查看该案例' : '查看该类型案例'
+              return (
+                <section
+                  key={t.key}
+                  className="case-type-section"
+                  role="listitem"
+                  aria-label={`${t.label}案例`}
+                >
+                  <header className="case-type-header">
+                    <div className="case-type-title-wrap">
+                      <h3 className="case-type-title">{t.label}</h3>
+                      <p className="case-type-sub">
+                        以目标为导向，从创意到落地的全链路现场执行。
+                      </p>
+                    </div>
+                    <Link className="btn btn-small btn-ghost" to={`/cases?type=${t.key}`}>
+                      查看更多
+                    </Link>
+                  </header>
+
+                  <Link to={heroLink} className="case-type-hero">
+                    <div className="case-type-hero-media">
                       <img
-                        src={item.src}
-                        alt={item.alt}
-                        loading={index === 0 ? 'eager' : 'lazy'}
+                        src={heroImage}
+                        alt={`${t.label}案例：${heroTitle}`}
+                        loading="lazy"
                         decoding="async"
                       />
                     </div>
-                  </figure>
-                ))}
-              </div>
-              <div className="case-carousel-caption-bar" aria-live="polite">
-                <span className="case-carousel-caption-text">
-                  {CASE_CAROUSEL_IMAGES[activeSlide].caption}
-                </span>
-                <div className="carousel-dots-wrap" aria-label="轮播页码">
-                  {CASE_CAROUSEL_IMAGES.map((item, index) => (
-                    <button
-                      key={`${item.src}-dot`}
-                      type="button"
-                      className={`carousel-dot ${index === activeSlide ? 'active' : ''}`}
-                      onClick={() => setActiveSlide(index)}
-                      aria-label={`切换到第 ${index + 1} 张案例图`}
-                      aria-selected={index === activeSlide}
-                    />
-                  ))}
-                </div>
-                <span className="case-carousel-counter">
-                  {String(activeSlide + 1).padStart(2, '0')}
-                  <span className="case-carousel-counter-sep">/</span>
-                  {String(CASE_CAROUSEL_IMAGES.length).padStart(2, '0')}
-                </span>
-              </div>
-              <button
-                type="button"
-                className="carousel-arrow left"
-                onClick={toPrevSlide}
-                aria-label="上一张"
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M15 18l-6-6 6-6"
-                  />
-                </svg>
-              </button>
-              <button
-                type="button"
-                className="carousel-arrow right"
-                onClick={toNextSlide}
-                aria-label="下一张"
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9 18l6-6-6-6"
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
-          <div className="card-grid">
-            {cases.slice(0, 6).map((c) => (
-              <Link key={c.id} to={`/cases/${c.slug}`} className="card card-link">
-                <h3>{c.title}</h3>
-                <p>{c.summary}</p>
-                <span className="tag">{c.event_type}</span>
-              </Link>
-            ))}
+                    <div className="case-type-hero-overlay" aria-hidden="true" />
+                    <div className="case-type-hero-content">
+                      <span className="case-type-hero-kicker">{t.label}</span>
+                      <h4 className="case-type-hero-title">{heroTitle}</h4>
+                      <p className="case-type-hero-summary">{heroSummary}</p>
+                      <span className="case-type-hero-cta">{heroCta}</span>
+                    </div>
+                  </Link>
+                </section>
+              )
+            })}
           </div>
         </div>
       </section>
