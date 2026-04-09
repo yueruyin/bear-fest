@@ -4,3 +4,6 @@ sqlalchemy
 pydantic
 typing-extensions
 python-multipart
+passlib[bcrypt]
+python-jose[cryptography]
+PyYAML

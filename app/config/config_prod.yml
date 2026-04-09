@@ -18,3 +18,9 @@ cors:
   allow_origins: ["*"]
   allow_credentials: true
 
+jwt:
+  # 管理后台 JWT 密钥（生产请替换为强随机字符串）
+  admin_secret: "prod-change-me"
+  # token 有效期（分钟）
+  expires_minutes: 720
+

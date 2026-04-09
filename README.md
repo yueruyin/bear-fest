@@ -86,9 +86,6 @@ VITE_API_BASE_URL=http://127.0.0.1:8000 npm run dev
 # 前端构建
 cd frontend && npm run build
 
-# 前端代码检查
-cd frontend && npm run lint
-
 # 初始化数据库（可选）
 python3 -m app.init_db
 ```

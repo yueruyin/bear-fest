@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from app.api.admin import router as admin_router
 from app.api.cases import router as cases_router
 from app.api.health import router as health_router
 from app.api.leads import router as leads_router
@@ -30,3 +31,4 @@ app.include_router(site_config_router)
 app.include_router(cases_router)
 app.include_router(leads_router)
 app.include_router(merchant_signups_router)
+app.include_router(admin_router)

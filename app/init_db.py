@@ -1,7 +1,9 @@
 from datetime import datetime
 
 from app.database import Base, SessionLocal, engine
-from app.model import Case, SiteConfig
+from app.model import Case, Role, SiteConfig, User
+from app.auth import hash_password
+import os
 
 
 def init_db():
@@ -9,6 +11,26 @@ def init_db():
 
     db = SessionLocal()
     try:
+        # Bootstrap role + admin user if none exists (for first-time setup).
+        admin_role = db.query(Role).filter(Role.name == "admin").first()
+        if not admin_role:
+            admin_role = Role(name="admin")
+            db.add(admin_role)
+            db.flush()
+
+        if db.query(User).count() == 0:
+            username = os.getenv("ADMIN_BOOTSTRAP_USERNAME", "admin").strip()
+            password = os.getenv("ADMIN_BOOTSTRAP_PASSWORD", "").strip()
+            if password:
+                db.add(
+                    User(
+                        username=username,
+                        password_hash=hash_password(password),
+                        is_active=True,
+                        role_id=admin_role.id,
+                    )
+                )
+
         # Seed a default site config.
         if db.query(SiteConfig).count() == 0:
             db.add(
