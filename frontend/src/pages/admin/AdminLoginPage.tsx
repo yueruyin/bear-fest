@@ -1,4 +1,5 @@
 import { type FormEvent, useMemo, useState } from 'react'
+import { LockKeyhole, LogIn, UserRound } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { API_BASE_URL } from '../../api'
 import { setAdminToken } from '../../admin/auth'
@@ -43,41 +44,48 @@ export function AdminLoginPage() {
   return (
     <div className="admin-login">
       <div className="admin-login-card">
-        <div className="admin-login-title">管理员登录</div>
-        <div className="admin-login-sub">配置站点信息与查看申请数据</div>
+        <div className="admin-login-badge">小熊运营工作台</div>
+        <div className="admin-login-title">登录后管理网站内容</div>
+        <div className="admin-login-sub">用于查看合作咨询、商户报名和维护项目案例。</div>
 
         <form className="admin-login-form" onSubmit={onSubmit}>
           <label className="admin-field">
             <span>账号</span>
-            <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
-              placeholder="admin"
-              required
-            />
+            <div className="admin-input-with-icon">
+              <UserRound size={18} aria-hidden="true" />
+              <input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username"
+                placeholder="请输入账号"
+                required
+              />
+            </div>
           </label>
 
           <label className="admin-field">
             <span>密码</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              placeholder="请输入密码"
-              required
-            />
+            <div className="admin-input-with-icon">
+              <LockKeyhole size={18} aria-hidden="true" />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                placeholder="请输入密码"
+                required
+              />
+            </div>
           </label>
 
           {error ? <div className="admin-error">{error}</div> : null}
 
           <button className="admin-primary-btn" type="submit" disabled={loading}>
             {loading ? '登录中…' : '登录'}
+            {loading ? null : <LogIn size={17} aria-hidden="true" />}
           </button>
         </form>
       </div>
     </div>
   )
 }
-

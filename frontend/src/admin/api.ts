@@ -49,3 +49,27 @@ export async function adminFetch<T>(
   return (await res.text()) as T
 }
 
+export async function adminDownload(path: string, filename: string): Promise<void> {
+  const token = getAdminToken()
+  const headers = new Headers()
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+
+  const res = await fetch(`${API_BASE_URL}${path}`, { headers })
+  if (res.status === 401) {
+    clearAdminToken()
+    throw new AdminApiError(401, 'not authenticated')
+  }
+  if (!res.ok) {
+    throw new AdminApiError(res.status, await parseErrorMessage(res))
+  }
+
+  const blob = await res.blob()
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(url)
+}

@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { ArrowRight, Phone } from 'lucide-react'
+import { Link, NavLink } from 'react-router-dom'
 
 export function Layout({ children }: { children: ReactNode }) {
   const [isNavHidden, setIsNavHidden] = useState(false)
@@ -85,22 +86,24 @@ export function Layout({ children }: { children: ReactNode }) {
           </Link>
 
           <nav className="nav-links" aria-label="主导航">
-            <Link to="/services">服务能力</Link>
-            <Link to="/cases">项目案例</Link>
-            <Link to="/merchant-signup">商户报名</Link>
-            <Link to="/about">关于我们</Link>
+            <NavLink to="/services">服务能力</NavLink>
+            <NavLink to="/cases">项目案例</NavLink>
+            <NavLink to="/merchant-signup">商户报名</NavLink>
+            <NavLink to="/about">关于我们</NavLink>
           </nav>
 
           <div className="nav-actions">
-            <a href="tel:400-000-0000" className="nav-action-link">
+            <Link to="/contact" className="nav-action-link">
               联系我们
-            </a>
-            <a href="tel:400-000-0000" className="nav-phone-link">
+            </Link>
+            <a href="tel:400-000-0000" className="nav-phone-link" aria-label="拨打咨询电话 400-000-0000">
+              <Phone size={15} aria-hidden="true" />
               400-000-0000
             </a>
-            <a href="tel:400-000-0000" className="btn btn-small nav-cta">
+            <Link to="/contact" className="btn btn-small nav-cta">
               咨询合作
-            </a>
+              <ArrowRight size={15} aria-hidden="true" />
+            </Link>
           </div>
         </div>
       </header>

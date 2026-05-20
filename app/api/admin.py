@@ -13,6 +13,7 @@ from app.model import Case, Lead, MerchantSignup, SiteConfig, User
 from app.schema import (
     AdminLoginIn,
     AdminTokenOut,
+    CaseAdminDetail,
     CaseAdminListItem,
     CaseCreateIn,
     CaseUpdateIn,
@@ -210,6 +211,18 @@ def admin_list_cases(
     )
 
 
+@router.get("/api/admin/cases/{case_id}", response_model=CaseAdminDetail)
+def admin_get_case_detail(
+    case_id: int,
+    _admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    case = db.query(Case).filter(Case.id == case_id).first()
+    if not case:
+        raise HTTPException(status_code=404, detail="case not found")
+    return case
+
+
 @router.post("/api/admin/cases", response_model=CaseAdminListItem, status_code=201)
 def admin_create_case(
     payload: CaseCreateIn,
@@ -313,7 +326,16 @@ def admin_export_leads_csv(
         buf = io.StringIO()
         writer = csv.writer(buf)
         writer.writerow(
-            ["id", "name", "company", "phone_or_email", "status", "source_page", "created_at"]
+            [
+                "id",
+                "name",
+                "company",
+                "phone_or_email",
+                "demand_desc",
+                "status",
+                "source_page",
+                "created_at",
+            ]
         )
         yield buf.getvalue()
         buf.seek(0)
@@ -326,6 +348,7 @@ def admin_export_leads_csv(
                     r.name,
                     r.company or "",
                     r.phone_or_email,
+                    r.demand_desc,
                     r.status,
                     r.source_page,
                     r.created_at.isoformat() if r.created_at else "",
@@ -410,4 +433,3 @@ def admin_export_merchant_signups_csv(
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": 'attachment; filename="merchant-signups.csv"'},
     )
-

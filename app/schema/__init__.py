@@ -1,6 +1,6 @@
 from app.schema.case import CaseDetail, CaseListItem
 from app.schema.admin_auth import AdminLoginIn, AdminTokenOut
-from app.schema.admin_case import CaseAdminListItem, CaseCreateIn, CaseUpdateIn
+from app.schema.admin_case import CaseAdminDetail, CaseAdminListItem, CaseCreateIn, CaseUpdateIn
 from app.schema.admin_lead import LeadAdminListItem, LeadStatusPatchIn
 from app.schema.admin_merchant_signup import (
     MerchantSignupAdminListItem,
@@ -15,6 +15,7 @@ __all__ = [
     "AdminLoginIn",
     "AdminTokenOut",
     "CaseAdminListItem",
+    "CaseAdminDetail",
     "CaseDetail",
     "CaseListItem",
     "CaseCreateIn",

@@ -1,0 +1,20 @@
+- generic [ref=e4]:
+  - generic [ref=e5]: 小熊运营工作台
+  - generic [ref=e6]: 登录后管理网站内容
+  - generic [ref=e7]: 用于查看合作咨询、商户报名和维护项目案例。
+  - generic [ref=e8]:
+    - generic [ref=e9]:
+      - generic [ref=e10]: 账号
+      - generic [ref=e11]:
+        - img [ref=e12]
+        - textbox "账号" [ref=e15]:
+          - /placeholder: 请输入账号
+    - generic [ref=e16]:
+      - generic [ref=e17]: 密码
+      - generic [ref=e18]:
+        - img [ref=e19]
+        - textbox "密码" [ref=e23]:
+          - /placeholder: 请输入密码
+    - button "登录" [ref=e24] [cursor=pointer]:
+      - text: 登录
+      - img [ref=e25]

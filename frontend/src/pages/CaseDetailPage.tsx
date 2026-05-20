@@ -56,6 +56,11 @@ function parseGalleryUrls(input?: string) {
     .filter(Boolean)
 }
 
+function getUsableImage(value: string | undefined, fallback: string) {
+  if (!value || value.includes('example.com')) return fallback
+  return value
+}
+
 export function CaseDetailPage() {
   const { slug } = useParams()
   const [detail, setDetail] = useState<CaseItem | null>(null)
@@ -76,7 +81,9 @@ export function CaseDetailPage() {
 
   const isWttCase = !!detail && (detail.event_type === 'sports' || detail.title.includes('WTT'))
   const gallery = detail ? parseGalleryUrls(detail.gallery_urls) : []
-  const pageImages = (gallery.length > 0 ? gallery : WTT_CASE_IMAGES).slice(0, 6)
+  const pageImages = (gallery.length > 0 ? gallery : WTT_CASE_IMAGES)
+    .map((src, index) => getUsableImage(src, WTT_CASE_IMAGES[index % WTT_CASE_IMAGES.length]))
+    .slice(0, 6)
 
   return (
     <Layout>
@@ -91,7 +98,7 @@ export function CaseDetailPage() {
               <header className="case-detail-hero">
                 <div className="case-detail-hero-media">
                   <img
-                    src={detail.cover_image_url || WTT_CASE_IMAGES[0]}
+                    src={getUsableImage(detail.cover_image_url, WTT_CASE_IMAGES[0])}
                     alt={detail.title}
                     loading="eager"
                     decoding="async"
