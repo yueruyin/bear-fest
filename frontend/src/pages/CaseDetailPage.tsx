@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { API_BASE_URL } from '../api'
 import { Layout } from '../components/Layout'
+import { resolveMediaUrl } from '../media'
 import type { CaseItem } from '../types'
 
 const WTT_REPORT_HIGHLIGHTS = [
@@ -58,7 +59,7 @@ function parseGalleryUrls(input?: string) {
 
 function getUsableImage(value: string | undefined, fallback: string) {
   if (!value || value.includes('example.com')) return fallback
-  return value
+  return resolveMediaUrl(value)
 }
 
 export function CaseDetailPage() {

@@ -3,6 +3,7 @@ import { ArrowRight } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Layout } from '../components/Layout'
 import { useCases } from '../hooks/useCases'
+import { resolveMediaUrl } from '../media'
 import type { CaseItem } from '../types'
 
 const CASE_TYPE_OPTIONS = [
@@ -42,7 +43,7 @@ function getCaseTypeLabel(value: string) {
 function getCaseImage(item: CaseItem) {
   const fallback = CASE_FALLBACK_IMAGES[normalizeEventType(item.event_type)]
   if (!item.cover_image_url || item.cover_image_url.includes('example.com')) return fallback
-  return item.cover_image_url
+  return resolveMediaUrl(item.cover_image_url)
 }
 
 export function CasesPage() {

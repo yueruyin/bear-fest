@@ -14,25 +14,25 @@ const ADMIN_NAV_ITEMS = [
   {
     to: '/admin/site-config',
     label: '站点内容',
-    desc: '首页文字、服务亮点',
+    desc: '首页文案、亮点与联系',
     icon: Settings,
   },
   {
     to: '/admin/leads',
     label: '合作咨询',
-    desc: '查看客户留资',
+    desc: '客户需求与跟进',
     icon: Inbox,
   },
   {
     to: '/admin/merchant-signups',
     label: '商户报名',
-    desc: '管理商户申请',
+    desc: '报名资料与沟通',
     icon: Store,
   },
   {
     to: '/admin/cases',
     label: '项目案例',
-    desc: '维护前台案例',
+    desc: '内容、图片与发布',
     icon: FileText,
   },
 ] as const

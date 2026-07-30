@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { Layout } from '../components/Layout'
 import { useCases } from '../hooks/useCases'
 import { useSiteConfig } from '../hooks/useSiteConfig'
+import { resolveMediaUrl } from '../media'
 
 const HOME_CASE_TYPES = [
   { key: 'sports', label: '赛事' },
@@ -114,7 +115,7 @@ function normalizeEventType(value: string): HomeCaseTypeKey | null {
 
 function getUsableCaseImage(value: string | undefined, fallback: string) {
   if (!value || value.includes('example.com')) return fallback
-  return value
+  return resolveMediaUrl(value)
 }
 
 export function HomePage() {

@@ -1,16 +1,25 @@
-import { type FormEvent, useState } from 'react'
-import { ArrowRight, Clock, Mail, MapPin, Phone, Send } from 'lucide-react'
+import { type FormEvent, useMemo, useState } from 'react'
+import { ArrowRight, Clock, Mail, MapPin, MessageCircle, Phone, Send } from 'lucide-react'
 import { API_BASE_URL } from '../api'
 import { Layout } from '../components/Layout'
+import { useSiteConfig } from '../hooks/useSiteConfig'
 import type { LeadForm } from '../types'
 
-const CONTACT_CHANNELS = [
-  { icon: Phone, label: '合作咨询', value: '400-000-0000' },
-  { icon: Mail, label: '商务邮箱', value: 'biz@example.com' },
-  { icon: Clock, label: '服务时间', value: '周一至周五 09:00-18:00' },
-] as const
+function parseContactChannels(value: string | undefined) {
+  try {
+    const parsed = JSON.parse(value || '{}') as Record<string, string>
+    return {
+      email: parsed.email || '',
+      wechat: parsed.wechat || '',
+      phone: parsed.phone || '',
+    }
+  } catch {
+    return { email: '', wechat: '', phone: '' }
+  }
+}
 
 export function ContactPage() {
+  const siteConfig = useSiteConfig()
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [form, setForm] = useState<LeadForm>({
@@ -19,6 +28,17 @@ export function ContactPage() {
     phone_or_email: '',
     demand_desc: '',
   })
+  const contactChannels = useMemo(() => {
+    const channels = parseContactChannels(siteConfig?.contact_channels)
+    return [
+      { icon: Phone, label: '合作咨询', value: channels.phone || '400-000-0000' },
+      { icon: Mail, label: '商务邮箱', value: channels.email || 'biz@example.com' },
+      ...(channels.wechat
+        ? [{ icon: MessageCircle, label: '商务微信', value: channels.wechat }]
+        : []),
+      { icon: Clock, label: '服务时间', value: '周一至周五 09:00-18:00' },
+    ]
+  }, [siteConfig])
 
   const onChange = (key: keyof LeadForm, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -82,7 +102,7 @@ export function ContactPage() {
               客户展示、商业合作、场地联动、供应链资源与商户入驻，都可以从这里开始。
             </p>
             <div className="contact-channel-list">
-              {CONTACT_CHANNELS.map((item) => {
+              {contactChannels.map((item) => {
                 const Icon = item.icon
                 return (
                   <div className="contact-channel" key={item.label}>
