@@ -1,0 +1,23 @@
+FROM node:20-alpine AS builder
+
+ARG VITE_API_BASE_URL=
+ARG NPM_REGISTRY=https://registry.npmmirror.com
+ARG NPM_SOURCE_PREFIX=https://nexus.zt.com.cn:38081/repository/npm-public
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+
+WORKDIR /app/frontend
+
+COPY frontend/package.json frontend/package-lock.json ./
+RUN sed -i "s#${NPM_SOURCE_PREFIX%/}/#${NPM_REGISTRY%/}/#g" package-lock.json \
+    && npm config set registry "${NPM_REGISTRY}" \
+    && npm ci --registry "${NPM_REGISTRY}"
+
+COPY frontend ./
+RUN npm run build
+
+FROM caddy:2.10-alpine
+
+COPY deploy/Caddyfile /etc/caddy/Caddyfile
+COPY --from=builder /app/frontend/dist /srv
+
+EXPOSE 80 443 443/udp

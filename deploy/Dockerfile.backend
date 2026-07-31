@@ -1,0 +1,46 @@
+FROM python:3.12-slim
+
+ARG DEBIAN_MIRROR=https://mirrors.aliyun.com/debian
+ARG DEBIAN_SECURITY_MIRROR=https://mirrors.aliyun.com/debian-security
+ARG PYPI_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONPATH=/app
+
+WORKDIR /app
+
+RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
+      sed -i \
+        -e "s#http://deb.debian.org/debian-security#${DEBIAN_SECURITY_MIRROR}#g" \
+        -e "s#https://deb.debian.org/debian-security#${DEBIAN_SECURITY_MIRROR}#g" \
+        -e "s#http://security.debian.org/debian-security#${DEBIAN_SECURITY_MIRROR}#g" \
+        -e "s#https://security.debian.org/debian-security#${DEBIAN_SECURITY_MIRROR}#g" \
+        -e "s#http://deb.debian.org/debian#${DEBIAN_MIRROR}#g" \
+        -e "s#https://deb.debian.org/debian#${DEBIAN_MIRROR}#g" \
+        /etc/apt/sources.list.d/debian.sources; \
+    fi \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt ./
+RUN python -m pip install --index-url "${PYPI_INDEX_URL}" --upgrade pip \
+    && pip install --index-url "${PYPI_INDEX_URL}" -r requirements.txt
+
+RUN groupadd --gid 10001 app \
+    && useradd --uid 10001 --gid app --create-home app
+
+COPY --chown=app:app app ./app
+COPY --chown=app:app deploy/backend-entrypoint.sh /usr/local/bin/backend-entrypoint
+
+RUN chmod +x /usr/local/bin/backend-entrypoint \
+    && mkdir -p /app/app/uploads \
+    && chown -R app:app /app/app/uploads
+
+USER app
+
+EXPOSE 8000
+
+ENTRYPOINT ["backend-entrypoint"]

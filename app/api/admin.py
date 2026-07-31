@@ -11,6 +11,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.auth import create_access_token, get_current_admin, verify_password
+from app.config.settings import UPLOADS_ROOT
 from app.database import get_db
 from app.model import Case, Lead, MerchantSignup, MerchantSignupFile, SiteConfig, User
 from app.schema import (
@@ -30,7 +31,7 @@ from app.schema import (
 
 router = APIRouter()
 
-CASE_UPLOAD_DIR = Path("app/uploads/cases")
+CASE_UPLOAD_DIR = UPLOADS_ROOT / "cases"
 CASE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 MAX_CASE_IMAGE_BYTES = 8 * 1024 * 1024
 
@@ -321,7 +322,11 @@ def admin_list_cases(
         query = query.filter(or_(Case.title.ilike(like), Case.slug.ilike(like)))
     offset = (page - 1) * page_size
     return (
-        query.order_by(Case.updated_at.desc().nullslast(), Case.id.desc())
+        query.order_by(
+            Case.updated_at.is_(None).asc(),
+            Case.updated_at.desc(),
+            Case.id.desc(),
+        )
         .offset(offset)
         .limit(page_size)
         .all()

@@ -5,12 +5,12 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.config.settings import UPLOADS_ROOT
 from app.model import MerchantSignup, MerchantSignupFile
 from app.schema import MerchantSignupCreateOut
 
 router = APIRouter()
 
-UPLOADS_ROOT = Path("app/uploads")
 MERCHANT_UPLOAD_DIR = UPLOADS_ROOT / "merchant"
 MERCHANT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -69,4 +69,3 @@ async def create_merchant_signup(
     db.commit()
     db.refresh(merchant_signup)
     return merchant_signup
-

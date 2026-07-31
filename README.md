@@ -122,7 +122,8 @@ npm run dev
 
 ## 前后端联调
 
-前端会通过 `VITE_API_BASE_URL` 请求后端。未显式配置时，会默认请求当前页面主机名的 `8000` 端口。
+前端会通过 `VITE_API_BASE_URL` 请求后端。开发模式未显式配置时，会默认请求当前页面主机名的
+`8000` 端口；生产构建默认使用同源 `/api`。
 
 如果需要指定后端地址，可以这样启动：
 
@@ -198,9 +199,11 @@ python3 -m app.init_db
 ## 部署提醒
 
 - 正式环境不要使用默认管理员密码。
-- `app/config/config_prod.yml` 应设置独立的 JWT 密钥。
+- 正式环境通过 `ADMIN_JWT_SECRET` 设置独立的 JWT 密钥。
 - 如果前端和后端域名不同，需要配置正确的 `VITE_API_BASE_URL`。
 - SQLite 适合本地演示；正式生产建议迁移到 PostgreSQL 或 MySQL。
+- 项目已提供 Caddy、FastAPI 和 MySQL 组成的 Docker Compose 部署方案，详见
+  [Docker Compose 部署文档](deploy/README.md)。
 
 ## 相关文档
 

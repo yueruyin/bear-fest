@@ -21,7 +21,11 @@ def list_cases(
 
     offset = (page - 1) * page_size
     return (
-        query.order_by(Case.published_at.desc().nullslast(), Case.id.desc())
+        query.order_by(
+            Case.published_at.is_(None).asc(),
+            Case.published_at.desc(),
+            Case.id.desc(),
+        )
         .offset(offset)
         .limit(page_size)
         .all()
@@ -38,4 +42,3 @@ def get_case_detail(slug: str, db: Session = Depends(get_db)):
     if not case:
         raise HTTPException(status_code=404, detail="case not found")
     return case
-

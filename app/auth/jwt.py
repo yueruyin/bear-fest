@@ -8,7 +8,7 @@ from app.config.settings import ADMIN_JWT_EXPIRES_MINUTES, ADMIN_JWT_SECRET
 def _get_secret() -> str:
     secret = (ADMIN_JWT_SECRET or "").strip()
     if not secret:
-        raise RuntimeError("jwt.admin_secret is required in app/config/config_dev.yml")
+        raise RuntimeError("ADMIN_JWT_SECRET or jwt.admin_secret must be configured")
     return secret
 
 
@@ -33,4 +33,3 @@ def decode_subject(token: str) -> str:
         return sub
     except (JWTError, ValueError) as e:
         raise ValueError("invalid token") from e
-
