@@ -20,6 +20,7 @@ import {
   Image,
   Images,
   LayoutGrid,
+  ListChecks,
   Plus,
   RefreshCw,
   RotateCcw,
@@ -48,6 +49,11 @@ type CaseItem = {
 
 type CaseDetail = CaseItem & {
   gallery_urls: string
+  project_background: string | null
+  project_goals: string | null
+  execution_highlights: string | null
+  result_metrics: string | null
+  result_summary: string | null
   tags: string
   seo_title: string
   seo_description: string
@@ -60,6 +66,11 @@ type CaseForm = {
   summary: string
   cover_image_url: string
   gallery_urls: string
+  project_background: string
+  project_goals: string
+  execution_highlights: string
+  result_metrics: string
+  result_summary: string
   tags: string
   seo_title: string
   seo_description: string
@@ -84,7 +95,18 @@ type SaveFeedback = {
   text: string
 }
 
-type EditorTab = 'content' | 'media' | 'seo'
+type EditorTab = 'content' | 'review' | 'media' | 'seo'
+
+type ExecutionHighlight = {
+  title: string
+  description: string
+}
+
+type ResultMetric = {
+  label: string
+  value: string
+  description: string
+}
 
 const EMPTY_STATS: CaseStats = {
   total: 0,
@@ -100,6 +122,11 @@ const EMPTY_FORM: CaseForm = {
   summary: '',
   cover_image_url: '',
   gallery_urls: '[]',
+  project_background: '',
+  project_goals: '',
+  execution_highlights: '[]',
+  result_metrics: '[]',
+  result_summary: '',
   tags: '[]',
   seo_title: '',
   seo_description: '',
@@ -126,6 +153,7 @@ const EDITOR_TABS: Array<{
   icon: typeof FileText
 }> = [
   { value: 'content', label: '基础内容', icon: FileText },
+  { value: 'review', label: '项目复盘', icon: ListChecks },
   { value: 'media', label: '图片素材', icon: Images },
   { value: 'seo', label: '标签与搜索', icon: Settings2 },
 ]
@@ -178,6 +206,17 @@ function appendJsonArrayItems(value: string, newItems: string[]) {
       new Set([...jsonArrayToItems(value), ...newItems.map((item) => item.trim())]),
     ).filter(Boolean),
   )
+}
+
+function jsonObjectArrayToItems<T extends object>(value: string | null | undefined): T[] {
+  try {
+    const parsed: unknown = JSON.parse(value || '[]')
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is T => typeof item === 'object' && item !== null)
+      : []
+  } catch {
+    return []
+  }
 }
 
 function getEventTypeLabel(value: string) {
@@ -243,6 +282,11 @@ function detailToForm(detail: CaseDetail): CaseForm {
     summary: detail.summary || '',
     cover_image_url: detail.cover_image_url || '',
     gallery_urls: detail.gallery_urls || '[]',
+    project_background: detail.project_background || '',
+    project_goals: detail.project_goals || '',
+    execution_highlights: detail.execution_highlights || '[]',
+    result_metrics: detail.result_metrics || '[]',
+    result_summary: detail.result_summary || '',
     tags: detail.tags || '[]',
     seo_title: detail.seo_title || '',
     seo_description: detail.seo_description || '',
@@ -259,6 +303,19 @@ function cleanForm(form: CaseForm): CaseForm {
     summary: form.summary.trim(),
     cover_image_url: form.cover_image_url.trim(),
     gallery_urls: JSON.stringify(jsonArrayToItems(form.gallery_urls)),
+    project_background: form.project_background.trim(),
+    project_goals: form.project_goals.trim(),
+    execution_highlights: JSON.stringify(
+      jsonObjectArrayToItems<ExecutionHighlight>(form.execution_highlights).filter(
+        (item) => item.title.trim() || item.description.trim(),
+      ),
+    ),
+    result_metrics: JSON.stringify(
+      jsonObjectArrayToItems<ResultMetric>(form.result_metrics).filter(
+        (item) => item.label.trim() || item.value.trim() || item.description.trim(),
+      ),
+    ),
+    result_summary: form.result_summary.trim(),
     tags: JSON.stringify(jsonArrayToItems(form.tags)),
     seo_title: form.seo_title.trim(),
     seo_description: form.seo_description.trim(),
@@ -361,15 +418,36 @@ export function AdminCasesPage() {
 
   const galleryItems = useMemo(() => jsonArrayToItems(form.gallery_urls), [form.gallery_urls])
   const tagItems = useMemo(() => jsonArrayToItems(form.tags), [form.tags])
+  const highlightItems = useMemo(
+    () => jsonObjectArrayToItems<ExecutionHighlight>(form.execution_highlights),
+    [form.execution_highlights],
+  )
+  const metricItems = useMemo(
+    () => jsonObjectArrayToItems<ResultMetric>(form.result_metrics),
+    [form.result_metrics],
+  )
   const isDirty = useMemo(
     () => JSON.stringify(form) !== JSON.stringify(savedForm),
     [form, savedForm],
   )
   const contentIsComplete = Boolean(form.title.trim() && form.summary.trim())
+  const reviewIsComplete = Boolean(
+    form.project_background.trim().length >= 20 &&
+      form.project_goals.trim().length >= 10 &&
+      highlightItems.length >= 1 &&
+      highlightItems.every(
+        (item) =>
+          item.title.trim().length >= 2 && item.description.trim().length >= 10,
+      ) &&
+      metricItems.every((item) => item.label.trim() && item.value.trim()),
+  )
   const mediaIsComplete = Boolean(form.cover_image_url.trim())
   const seoIsComplete = Boolean(form.seo_title.trim() || form.seo_description.trim())
-  const completedRequired = [contentIsComplete, mediaIsComplete].filter(Boolean).length
-  const isValid = contentIsComplete && mediaIsComplete
+  const completedRequired = [contentIsComplete, reviewIsComplete, mediaIsComplete].filter(Boolean).length
+  const isValid =
+    contentIsComplete &&
+    mediaIsComplete &&
+    (form.publish_status !== 'published' || reviewIsComplete)
   const isBusy = saving || detailLoading || coverUploading || galleryUploading
 
   useEffect(() => {
@@ -508,6 +586,58 @@ export function AdminCasesPage() {
     )
   }
 
+  const setHighlightItems = (items: ExecutionHighlight[]) => {
+    updateForm('execution_highlights', JSON.stringify(items))
+  }
+
+  const updateHighlight = (
+    index: number,
+    field: keyof ExecutionHighlight,
+    value: string,
+  ) => {
+    const nextItems = highlightItems.map((item, itemIndex) =>
+      itemIndex === index ? { ...item, [field]: value } : item,
+    )
+    setHighlightItems(nextItems)
+  }
+
+  const moveHighlight = (index: number, direction: -1 | 1) => {
+    const targetIndex = index + direction
+    if (targetIndex < 0 || targetIndex >= highlightItems.length) return
+    const nextItems = [...highlightItems]
+    ;[nextItems[index], nextItems[targetIndex]] = [nextItems[targetIndex], nextItems[index]]
+    setHighlightItems(nextItems)
+  }
+
+  const setMetricItems = (items: ResultMetric[]) => {
+    updateForm('result_metrics', JSON.stringify(items))
+  }
+
+  const updateMetric = (index: number, field: keyof ResultMetric, value: string) => {
+    const nextItems = metricItems.map((item, itemIndex) =>
+      itemIndex === index ? { ...item, [field]: value } : item,
+    )
+    setMetricItems(nextItems)
+  }
+
+  const moveMetric = (index: number, direction: -1 | 1) => {
+    const targetIndex = index + direction
+    if (targetIndex < 0 || targetIndex >= metricItems.length) return
+    const nextItems = [...metricItems]
+    ;[nextItems[index], nextItems[targetIndex]] = [nextItems[targetIndex], nextItems[index]]
+    setMetricItems(nextItems)
+  }
+
+  const focusInvalidField = (tab: EditorTab) => {
+    setActiveTab(tab)
+    window.setTimeout(() => {
+      const field = document.querySelector<HTMLElement>(
+        `[data-editor-tab="${tab}"] [aria-invalid="true"]`,
+      )
+      field?.focus()
+    })
+  }
+
   const addTag = () => {
     const value = tagInput.trim().replace(/,$/, '')
     if (!value) return
@@ -529,13 +659,21 @@ export function AdminCasesPage() {
   const onSave = useCallback(async () => {
     if (isBusy || !isDirty) return
     if (!contentIsComplete) {
-      setActiveTab('content')
+      focusInvalidField('content')
       setSaveFeedback({ type: 'error', text: '请先填写案例标题和摘要。' })
       return
     }
     if (!mediaIsComplete) {
-      setActiveTab('media')
+      focusInvalidField('media')
       setSaveFeedback({ type: 'error', text: '请先上传或填写案例封面图。' })
+      return
+    }
+    if (form.publish_status === 'published' && !reviewIsComplete) {
+      focusInvalidField('review')
+      setSaveFeedback({
+        type: 'error',
+        text: '发布前请完善项目背景、项目目标和至少一项执行亮点。',
+      })
       return
     }
 
@@ -556,6 +694,11 @@ export function AdminCasesPage() {
             summary: cleaned.summary,
             cover_image_url: cleaned.cover_image_url,
             gallery_urls: cleaned.gallery_urls,
+            project_background: cleaned.project_background || null,
+            project_goals: cleaned.project_goals || null,
+            execution_highlights: cleaned.execution_highlights,
+            result_metrics: cleaned.result_metrics,
+            result_summary: cleaned.result_summary || null,
             tags: cleaned.tags,
             seo_title: cleaned.seo_title,
             seo_description: cleaned.seo_description,
@@ -573,6 +716,11 @@ export function AdminCasesPage() {
             summary: cleaned.summary,
             cover_image_url: cleaned.cover_image_url,
             gallery_urls: cleaned.gallery_urls,
+            project_background: cleaned.project_background || null,
+            project_goals: cleaned.project_goals || null,
+            execution_highlights: cleaned.execution_highlights,
+            result_metrics: cleaned.result_metrics,
+            result_summary: cleaned.result_summary || null,
             tags: cleaned.tags,
             seo_title: cleaned.seo_title,
             seo_description: cleaned.seo_description,
@@ -612,6 +760,7 @@ export function AdminCasesPage() {
     loadItems,
     loadStats,
     mediaIsComplete,
+    reviewIsComplete,
   ])
 
   useEffect(() => {
@@ -925,10 +1074,10 @@ export function AdminCasesPage() {
           <div className="admin-case-completeness">
             <div>
               <span>发布必填</span>
-              <strong>{completedRequired}/2 已完成</strong>
+              <strong>{completedRequired}/3 已完成</strong>
             </div>
             <div className="admin-case-completeness-track">
-              <span style={{ width: `${(completedRequired / 2) * 100}%` }} />
+              <span style={{ width: `${(completedRequired / 3) * 100}%` }} />
             </div>
             <div className="admin-case-completeness-items">
               <span className={contentIsComplete ? 'is-complete' : ''}>
@@ -939,6 +1088,10 @@ export function AdminCasesPage() {
                 {mediaIsComplete ? <Check size={13} aria-hidden="true" /> : null}
                 案例封面
               </span>
+              <span className={reviewIsComplete ? 'is-complete' : ''}>
+                {reviewIsComplete ? <Check size={13} aria-hidden="true" /> : null}
+                项目复盘
+              </span>
             </div>
           </div>
 
@@ -948,6 +1101,8 @@ export function AdminCasesPage() {
               const complete =
                 tab.value === 'content'
                   ? contentIsComplete
+                  : tab.value === 'review'
+                    ? reviewIsComplete
                   : tab.value === 'media'
                     ? mediaIsComplete
                     : seoIsComplete
@@ -974,7 +1129,7 @@ export function AdminCasesPage() {
           ) : (
             <div className="admin-case-editor-body">
               {activeTab === 'content' ? (
-                <div className="admin-case-editor-section">
+                <div className="admin-case-editor-section" data-editor-tab="content">
                   <div className="admin-case-section-intro">
                     <div>
                       <h3>基础内容</h3>
@@ -1065,8 +1220,240 @@ export function AdminCasesPage() {
                 </div>
               ) : null}
 
+              {activeTab === 'review' ? (
+                <div className="admin-case-editor-section" data-editor-tab="review">
+                  <div className="admin-case-section-intro">
+                    <div>
+                      <h3>项目复盘</h3>
+                      <p>按前台阅读顺序维护项目背景、执行亮点与真实成果。</p>
+                    </div>
+                    <span>发布时必填背景、目标和至少 1 项亮点</span>
+                  </div>
+
+                  <div className="admin-case-review-editor">
+                    <label className="admin-field">
+                      <span className="admin-field-label">
+                        <strong>项目背景</strong>
+                        <small>{form.project_background.length}/2000</small>
+                      </span>
+                      <textarea
+                        className="admin-textarea"
+                        rows={6}
+                        value={form.project_background}
+                        onChange={(event) => updateForm('project_background', event.target.value)}
+                        maxLength={2000}
+                        placeholder="说明项目缘起、客户需求、活动场景与关键约束。"
+                        aria-invalid={
+                          form.publish_status === 'published' &&
+                          form.project_background.trim().length < 20
+                        }
+                      />
+                      <small className="admin-field-hint">发布时需填写 20–2000 字。</small>
+                    </label>
+
+                    <label className="admin-field">
+                      <span className="admin-field-label">
+                        <strong>项目目标</strong>
+                        <small>{form.project_goals.length}/1000</small>
+                      </span>
+                      <textarea
+                        className="admin-textarea"
+                        rows={5}
+                        value={form.project_goals}
+                        onChange={(event) => updateForm('project_goals', event.target.value)}
+                        maxLength={1000}
+                        placeholder="说明项目希望达成的业务、传播或现场体验目标。"
+                        aria-invalid={
+                          form.publish_status === 'published' &&
+                          form.project_goals.trim().length < 10
+                        }
+                      />
+                      <small className="admin-field-hint">发布时需填写 10–1000 字。</small>
+                    </label>
+
+                    <div className="admin-case-structured-editor">
+                      <div className="admin-case-gallery-head">
+                        <div>
+                          <strong>执行亮点</strong>
+                          <p>至少 1 项，最多 6 项；可通过箭头调整展示顺序。</p>
+                        </div>
+                        <button
+                          type="button"
+                          className="admin-secondary-btn"
+                          disabled={highlightItems.length >= 6}
+                          onClick={() =>
+                            setHighlightItems([
+                              ...highlightItems,
+                              { title: '', description: '' },
+                            ])
+                          }
+                        >
+                          <Plus size={15} aria-hidden="true" />
+                          添加亮点
+                        </button>
+                      </div>
+                      {highlightItems.length > 0 ? (
+                        <div className="admin-case-structured-list">
+                          {highlightItems.map((item, index) => (
+                            <article key={index} className="admin-case-structured-item">
+                              <div className="admin-case-structured-item-head">
+                                <strong>亮点 {index + 1}</strong>
+                                <div>
+                                  <button type="button" disabled={index === 0} onClick={() => moveHighlight(index, -1)} aria-label={`上移亮点 ${index + 1}`}><ArrowUp size={14} /></button>
+                                  <button type="button" disabled={index === highlightItems.length - 1} onClick={() => moveHighlight(index, 1)} aria-label={`下移亮点 ${index + 1}`}><ArrowDown size={14} /></button>
+                                  <button type="button" className="is-danger" onClick={() => setHighlightItems(highlightItems.filter((_, itemIndex) => itemIndex !== index))} aria-label={`删除亮点 ${index + 1}`}><Trash2 size={14} /></button>
+                                </div>
+                              </div>
+                              <label className="admin-field">
+                                <span>亮点标题</span>
+                                <input
+                                  value={item.title}
+                                  maxLength={40}
+                                  onChange={(event) => updateHighlight(index, 'title', event.target.value)}
+                                  placeholder="2–40 字"
+                                  aria-invalid={form.publish_status === 'published' && item.title.trim().length < 2}
+                                />
+                              </label>
+                              <label className="admin-field">
+                                <span>亮点说明</span>
+                                <textarea
+                                  className="admin-textarea"
+                                  rows={4}
+                                  value={item.description}
+                                  maxLength={500}
+                                  onChange={(event) => updateHighlight(index, 'description', event.target.value)}
+                                  placeholder="10–500 字，说明具体做法和价值。"
+                                  aria-invalid={form.publish_status === 'published' && item.description.trim().length < 10}
+                                />
+                              </label>
+                            </article>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="admin-case-gallery-empty">
+                          <ListChecks size={23} aria-hidden="true" />
+                          <strong>还没有执行亮点</strong>
+                          <span>发布前至少添加一项真实执行亮点。</span>
+                          <button
+                            type="button"
+                            aria-invalid={form.publish_status === 'published'}
+                            onClick={() => setHighlightItems([{ title: '', description: '' }])}
+                          >添加第一项</button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="admin-case-structured-editor">
+                      <div className="admin-case-gallery-head">
+                        <div>
+                          <strong>成果数据</strong>
+                          <p>可选，最多 6 项；没有真实数据时请留空。</p>
+                        </div>
+                        <button
+                          type="button"
+                          className="admin-secondary-btn"
+                          disabled={metricItems.length >= 6}
+                          onClick={() =>
+                            setMetricItems([
+                              ...metricItems,
+                              { label: '', value: '', description: '' },
+                            ])
+                          }
+                        >
+                          <Plus size={15} aria-hidden="true" />
+                          添加指标
+                        </button>
+                      </div>
+                      {metricItems.length > 0 ? (
+                        <div className="admin-case-structured-list">
+                          {metricItems.map((item, index) => (
+                            <article key={index} className="admin-case-structured-item">
+                              <div className="admin-case-structured-item-head">
+                                <strong>指标 {index + 1}</strong>
+                                <div>
+                                  <button type="button" disabled={index === 0} onClick={() => moveMetric(index, -1)} aria-label={`上移指标 ${index + 1}`}><ArrowUp size={14} /></button>
+                                  <button type="button" disabled={index === metricItems.length - 1} onClick={() => moveMetric(index, 1)} aria-label={`下移指标 ${index + 1}`}><ArrowDown size={14} /></button>
+                                  <button type="button" className="is-danger" onClick={() => setMetricItems(metricItems.filter((_, itemIndex) => itemIndex !== index))} aria-label={`删除指标 ${index + 1}`}><Trash2 size={14} /></button>
+                                </div>
+                              </div>
+                              <div className="admin-grid-2">
+                                <label className="admin-field">
+                                  <span>指标名称</span>
+                                  <input value={item.label} maxLength={20} onChange={(event) => updateMetric(index, 'label', event.target.value)} placeholder="例如：到场人次" aria-invalid={form.publish_status === 'published' && !item.label.trim()} />
+                                </label>
+                                <label className="admin-field">
+                                  <span>指标数值</span>
+                                  <input value={item.value} maxLength={30} onChange={(event) => updateMetric(index, 'value', event.target.value)} placeholder="例如：12,000+" aria-invalid={form.publish_status === 'published' && !item.value.trim()} />
+                                </label>
+                              </div>
+                              <label className="admin-field">
+                                <span>指标说明（可选）</span>
+                                <input value={item.description} maxLength={100} onChange={(event) => updateMetric(index, 'description', event.target.value)} placeholder="补充口径、时间范围或来源" />
+                              </label>
+                            </article>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="admin-case-gallery-empty">
+                          <LayoutGrid size={23} aria-hidden="true" />
+                          <strong>未填写成果数据</strong>
+                          <span>前台不会显示成果数据模块。</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <label className="admin-field">
+                      <span className="admin-field-label">
+                        <strong>项目成果总结（可选）</strong>
+                        <small>{form.result_summary.length}/1000</small>
+                      </span>
+                      <textarea
+                        className="admin-textarea"
+                        rows={5}
+                        value={form.result_summary}
+                        onChange={(event) => updateForm('result_summary', event.target.value)}
+                        maxLength={1000}
+                        placeholder="总结项目最终价值、影响或客户反馈。"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="admin-case-content-preview" aria-label="案例内容预览">
+                    <div className="admin-case-section-intro">
+                      <div>
+                        <h3>内容预览</h3>
+                        <p>模块顺序与前台详情页一致，空的可选模块不会展示。</p>
+                      </div>
+                    </div>
+                    <article>
+                      <header>
+                        <span>{getEventTypeLabel(form.event_type)}</span>
+                        <h3>{form.title || '案例标题'}</h3>
+                        <p>{form.summary || '案例摘要'}</p>
+                      </header>
+                      {form.project_background || form.project_goals ? (
+                        <section>
+                          <h4>项目背景</h4>
+                          {form.project_background ? <p>{form.project_background}</p> : null}
+                          {form.project_goals ? <p><strong>项目目标：</strong>{form.project_goals}</p> : null}
+                        </section>
+                      ) : null}
+                      {highlightItems.length > 0 ? (
+                        <section><h4>执行亮点</h4>{highlightItems.map((item, index) => <div key={index}><strong>{item.title || `亮点 ${index + 1}`}</strong><p>{item.description || '亮点说明'}</p></div>)}</section>
+                      ) : null}
+                      {metricItems.length > 0 ? (
+                        <section><h4>成果数据</h4><div className="admin-case-preview-metrics">{metricItems.map((item, index) => <div key={index}><span>{item.label || '指标'}</span><strong>{item.value || '数值'}</strong>{item.description ? <small>{item.description}</small> : null}</div>)}</div></section>
+                      ) : null}
+                      {form.result_summary ? <section><h4>项目成果总结</h4><p>{form.result_summary}</p></section> : null}
+                      {galleryItems.length > 0 ? <section><h4>现场图集</h4><p>{galleryItems.length} 张图片，将按当前顺序展示。</p></section> : null}
+                      <section><h4>合作咨询</h4><p>咨询同类项目</p></section>
+                    </article>
+                  </div>
+                </div>
+              ) : null}
+
               {activeTab === 'media' ? (
-                <div className="admin-case-editor-section">
+                <div className="admin-case-editor-section" data-editor-tab="media">
                   <div className="admin-case-section-intro">
                     <div>
                       <h3>图片素材</h3>
@@ -1194,6 +1581,7 @@ export function AdminCasesPage() {
                       <span>封面图地址</span>
                       <input
                         value={form.cover_image_url}
+                        aria-invalid={!form.cover_image_url.trim()}
                         onChange={(event) => updateForm('cover_image_url', event.target.value)}
                         placeholder="/uploads/cases/image.jpg"
                       />
@@ -1215,7 +1603,7 @@ export function AdminCasesPage() {
               ) : null}
 
               {activeTab === 'seo' ? (
-                <div className="admin-case-editor-section">
+                <div className="admin-case-editor-section" data-editor-tab="seo">
                   <div className="admin-case-section-intro">
                     <div>
                       <h3>标签与搜索展示</h3>
@@ -1314,7 +1702,9 @@ export function AdminCasesPage() {
                 <strong>{isDirty ? '有未保存的修改' : '所有修改均已保存'}</strong>
                 <small>
                   {!isValid
-                    ? '请完善标题、摘要和封面图'
+                    ? form.publish_status === 'published'
+                      ? '请完善基础内容、项目复盘和封面图'
+                      : '请完善标题、摘要和封面图'
                     : form.publish_status === 'published'
                       ? '保存后将同步到前台'
                       : '保存后仅后台可见'}

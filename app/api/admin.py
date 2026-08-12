@@ -384,6 +384,11 @@ def admin_create_case(
         summary=payload.summary,
         cover_image_url=payload.cover_image_url,
         gallery_urls=payload.gallery_urls,
+        project_background=payload.project_background,
+        project_goals=payload.project_goals,
+        execution_highlights=payload.execution_highlights,
+        result_metrics=payload.result_metrics,
+        result_summary=payload.result_summary,
         tags=payload.tags,
         seo_title=payload.seo_title,
         seo_description=payload.seo_description,
@@ -416,6 +421,11 @@ def admin_update_case(
     case.summary = payload.summary
     case.cover_image_url = payload.cover_image_url
     case.gallery_urls = payload.gallery_urls
+    case.project_background = payload.project_background
+    case.project_goals = payload.project_goals
+    case.execution_highlights = payload.execution_highlights
+    case.result_metrics = payload.result_metrics
+    case.result_summary = payload.result_summary
     case.tags = payload.tags
     case.seo_title = payload.seo_title
     case.seo_description = payload.seo_description

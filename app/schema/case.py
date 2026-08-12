@@ -27,6 +27,11 @@ class CaseDetail(BaseModel):
     summary: str
     cover_image_url: str
     gallery_urls: str
+    project_background: str | None = None
+    project_goals: str | None = None
+    execution_highlights: str | None = "[]"
+    result_metrics: str | None = "[]"
+    result_summary: str | None = None
     publish_status: str
     published_at: datetime | None
     tags: str

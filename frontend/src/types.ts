@@ -17,8 +17,24 @@ export type CaseItem = {
   published_at: string | null
   tags: string
   gallery_urls?: string
+  project_background?: string | null
+  project_goals?: string | null
+  execution_highlights?: string | null
+  result_metrics?: string | null
+  result_summary?: string | null
   seo_title?: string
   seo_description?: string
+}
+
+export type ExecutionHighlight = {
+  title: string
+  description: string
+}
+
+export type ResultMetric = {
+  label: string
+  value: string
+  description?: string
 }
 
 export type LeadForm = {

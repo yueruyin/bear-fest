@@ -158,6 +158,11 @@ flowchart LR
 - summary: string
 - cover_image_url: string
 - gallery_urls: string[]
+- project_background: string（发布时必填）
+- project_goals: string（发布时必填）
+- execution_highlights: `{title, description}[]`（发布时 1–6 项）
+- result_metrics: `{label, value, description?}[]`（可选，最多 6 项）
+- result_summary: string（可选）
 - publish_status: enum（draft/published/offline）
 - published_at: datetime
 - tags: string[]

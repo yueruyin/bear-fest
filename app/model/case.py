@@ -16,6 +16,13 @@ class Case(Base):
     summary: Mapped[str] = mapped_column(String(500), nullable=False)
     cover_image_url: Mapped[str] = mapped_column(String(1000), nullable=False)
     gallery_urls: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    project_background: Mapped[str | None] = mapped_column(Text, nullable=True)
+    project_goals: Mapped[str | None] = mapped_column(Text, nullable=True)
+    execution_highlights: Mapped[str | None] = mapped_column(
+        Text, nullable=True, default="[]"
+    )
+    result_metrics: Mapped[str | None] = mapped_column(Text, nullable=True, default="[]")
+    result_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     publish_status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft")
     published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     tags: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
