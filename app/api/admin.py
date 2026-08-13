@@ -14,6 +14,7 @@ from app.auth import create_access_token, get_current_admin, verify_password
 from app.config.settings import UPLOADS_ROOT
 from app.database import get_db
 from app.model import Case, Lead, MerchantSignup, MerchantSignupFile, SiteConfig, User
+from app.model.case import CaseEventType, CasePublishStatus
 from app.schema import (
     AdminLoginIn,
     AdminTokenOut,
@@ -302,8 +303,8 @@ async def admin_upload_case_image(
 
 @router.get("/api/admin/cases", response_model=list[CaseAdminListItem])
 def admin_list_cases(
-    event_type: str | None = None,
-    publish_status: str | None = None,
+    event_type: CaseEventType | None = None,
+    publish_status: CasePublishStatus | None = None,
     q: str | None = None,
     page: int = 1,
     page_size: int = 20,
@@ -314,9 +315,9 @@ def admin_list_cases(
     page_size = _parse_int(page_size, 1, 100)
     query = db.query(Case)
     if event_type:
-        query = query.filter(Case.event_type == event_type)
+        query = query.filter(Case.event_type == event_type.value)
     if publish_status:
-        query = query.filter(Case.publish_status == publish_status)
+        query = query.filter(Case.publish_status == publish_status.value)
     if q:
         like = f"%{q.strip()}%"
         query = query.filter(or_(Case.title.ilike(like), Case.slug.ilike(like)))
@@ -380,7 +381,7 @@ def admin_create_case(
     case = Case(
         title=payload.title,
         slug=payload.slug,
-        event_type=payload.event_type,
+        event_type=payload.event_type.value,
         summary=payload.summary,
         cover_image_url=payload.cover_image_url,
         gallery_urls=payload.gallery_urls,
@@ -392,7 +393,7 @@ def admin_create_case(
         tags=payload.tags,
         seo_title=payload.seo_title,
         seo_description=payload.seo_description,
-        publish_status=payload.publish_status,
+        publish_status=payload.publish_status.value,
         published_at=None,
     )
     if case.publish_status == "published" and case.published_at is None:
@@ -417,7 +418,7 @@ def admin_update_case(
         raise HTTPException(status_code=404, detail="case not found")
 
     case.title = payload.title
-    case.event_type = payload.event_type
+    case.event_type = payload.event_type.value
     case.summary = payload.summary
     case.cover_image_url = payload.cover_image_url
     case.gallery_urls = payload.gallery_urls
@@ -429,7 +430,7 @@ def admin_update_case(
     case.tags = payload.tags
     case.seo_title = payload.seo_title
     case.seo_description = payload.seo_description
-    case.publish_status = payload.publish_status
+    case.publish_status = payload.publish_status.value
     case.published_at = payload.published_at
 
     if case.publish_status == "published" and case.published_at is None:

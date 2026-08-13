@@ -3,15 +3,13 @@ import { Link, useParams } from 'react-router-dom'
 import { API_BASE_URL } from '../api'
 import { Layout } from '../components/Layout'
 import { resolveMediaUrl } from '../media'
-import type { CaseItem, ExecutionHighlight, ResultMetric } from '../types'
-
-const EVENT_TYPE_LABELS: Record<string, string> = {
-  sports: '赛事活动',
-  carnival: '城市嘉年华',
-  market: '潮流集市',
-  annual: '企业年会',
-  brand: '品牌活动',
-}
+import {
+  CASE_EVENT_TYPE_LABELS,
+  isCaseEventType,
+  type CaseItem,
+  type ExecutionHighlight,
+  type ResultMetric,
+} from '../types'
 
 type LoadState = 'loading' | 'success' | 'not-found' | 'error' | 'invalid'
 
@@ -69,6 +67,7 @@ function parseMetrics(input: string | null | undefined): ParsedArray<ResultMetri
       typeof (item as ResultMetric).label === 'string' &&
       typeof (item as ResultMetric).value === 'string' &&
       ((item as ResultMetric).description === undefined ||
+        (item as ResultMetric).description === null ||
         typeof (item as ResultMetric).description === 'string'),
   )
   return { items: valid ? (parsed.items as ResultMetric[]) : [], invalid: !valid }
@@ -87,7 +86,7 @@ function isCaseItem(value: unknown): value is CaseItem {
 }
 
 export function getCaseTypeLabel(value: string) {
-  return EVENT_TYPE_LABELS[value] || value || '未分类'
+  return isCaseEventType(value) ? CASE_EVENT_TYPE_LABELS[value] : value || '未分类'
 }
 
 export function formatPublishedAt(value: string | null) {

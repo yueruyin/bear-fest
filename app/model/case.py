@@ -1,9 +1,23 @@
 from datetime import datetime
+from enum import Enum
 
 from sqlalchemy import DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+
+
+class CaseEventType(str, Enum):
+    SPORTS = "sports"
+    CARNIVAL = "carnival"
+    MARKET = "market"
+    ANNUAL = "annual"
+    BRAND = "brand"
+
+
+class CasePublishStatus(str, Enum):
+    DRAFT = "draft"
+    PUBLISHED = "published"
 
 
 class Case(Base):

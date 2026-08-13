@@ -5,6 +5,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.model.case import CaseEventType, CasePublishStatus
+
 
 def _parse_json_array(value: str, field_name: str) -> list[Any]:
     try:
@@ -46,7 +48,7 @@ def _validate_object_array(
 
 class CaseWriteBase(BaseModel):
     title: str = Field(min_length=1, max_length=200)
-    event_type: str = Field(min_length=1, max_length=32)
+    event_type: CaseEventType
     summary: str = Field(min_length=1, max_length=500)
     cover_image_url: str = Field(min_length=1, max_length=1000)
     gallery_urls: str = Field(default="[]", max_length=20000)
@@ -58,7 +60,7 @@ class CaseWriteBase(BaseModel):
     tags: str = Field(default="[]", max_length=20000)
     seo_title: str = Field(default="", max_length=255)
     seo_description: str = Field(default="", max_length=500)
-    publish_status: str = Field(default="draft", max_length=32)
+    publish_status: CasePublishStatus = CasePublishStatus.DRAFT
 
     @field_validator("execution_highlights")
     @classmethod
@@ -86,7 +88,7 @@ class CaseWriteBase(BaseModel):
 
     @model_validator(mode="after")
     def validate_publish_completeness(self):
-        if self.publish_status != "published":
+        if self.publish_status is not CasePublishStatus.PUBLISHED:
             return self
 
         background = (self.project_background or "").strip()

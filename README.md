@@ -174,6 +174,48 @@ python3 -m compileall app
 python3 -m app.init_db
 ```
 
+## 测试与统一验证
+
+后端测试依赖和前端依赖分别安装：
+
+```bash
+# 仓库根目录
+python3 -m pip install -r requirements-dev.txt
+
+cd frontend
+npm ci
+npx playwright install chromium
+```
+
+后端 API 测试使用 pytest，并为每次测试运行创建独立的临时 SQLite 数据库和上传目录，
+不会读取或修改根目录 `app.db` 与 `app/uploads/`：
+
+```bash
+python3 -m pytest
+```
+
+前端可分别执行类型检查、Lint、单元测试和 Chromium E2E：
+
+```bash
+cd frontend
+npm run typecheck
+npm run lint
+npm run test:unit
+npm run test:e2e
+```
+
+完整验证统一从仓库根目录执行：
+
+```bash
+./scripts/verify.sh
+```
+
+脚本默认优先使用 `.venv/bin/python`，也可通过 `PYTHON_BIN` 指定 Python 解释器：
+
+```bash
+PYTHON_BIN=/path/to/python ./scripts/verify.sh
+```
+
 案例复盘字段的 SQLite/MySQL 上线、验证、历史数据核对与回滚步骤见
 [Issue #2 案例复盘字段迁移说明](docs/case-content-migration.md)。
 

@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { CaseItem } from '../types'
@@ -49,6 +49,7 @@ function renderPage() {
 }
 
 afterEach(() => {
+  cleanup()
   vi.unstubAllGlobals()
 })
 
@@ -64,6 +65,59 @@ describe('CaseDetailPage', () => {
     expect(screen.getByText('8个')).toBeInTheDocument()
     expect(screen.queryByText('¥955,287')).not.toBeInTheDocument()
     expect(screen.queryByText('渠道表现分析')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    {
+      name: 'description=null',
+      resultMetrics: '[{"label":"参与人数","value":"100人","description":null}]',
+      hasModule: true,
+      expectedTexts: ['参与人数', '100人'],
+    },
+    {
+      name: 'description=""',
+      resultMetrics: '[{"label":"参与人数","value":"100人","description":""}]',
+      hasModule: true,
+      expectedTexts: ['参与人数', '100人'],
+    },
+    {
+      name: 'description is a normal string',
+      resultMetrics:
+        '[{"label":"参与人数","value":"100人","description":"统计口径为现场签到"}]',
+      hasModule: true,
+      expectedTexts: ['参与人数', '100人', '统计口径为现场签到'],
+    },
+    {
+      name: 'result_metrics=[]',
+      resultMetrics: '[]',
+      hasModule: false,
+      expectedTexts: [],
+    },
+    {
+      name: 'some metric descriptions are null',
+      resultMetrics:
+        '[{"label":"参与人数","value":"100人","description":null},{"label":"服务点位","value":"8个","description":"正式开放点位"}]',
+      hasModule: true,
+      expectedTexts: ['参与人数', '100人', '服务点位', '8个', '正式开放点位'],
+    },
+  ])('handles $name without marking historical content invalid', async ({
+    resultMetrics,
+    hasModule,
+    expectedTexts,
+  }) => {
+    mockResponse(200, { ...BASE_CASE, result_metrics: resultMetrics })
+    renderPage()
+
+    expect(await screen.findByRole('heading', { name: '普通赛事案例' })).toBeInTheDocument()
+    if (hasModule) {
+      expect(screen.getByRole('heading', { name: '成果数据' })).toBeInTheDocument()
+    } else {
+      expect(screen.queryByRole('heading', { name: '成果数据' })).not.toBeInTheDocument()
+    }
+    expectedTexts.forEach((text) => expect(screen.getByText(text)).toBeInTheDocument())
+    expect(
+      screen.queryByText('该案例的部分历史内容暂时无法展示。'),
+    ).not.toBeInTheDocument()
   })
 
   it('hides optional modules and preserves the full gallery order', async () => {

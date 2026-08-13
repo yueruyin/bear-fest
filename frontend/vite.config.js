@@ -13,9 +13,4 @@ export default defineConfig({
     host: '0.0.0.0',
     allowedHosts: ['cd-1.frp.one'],
   },
-  test: {
-    environment: 'jsdom',
-    globals: true,
-    setupFiles: './src/test/setup.ts',
-  },
 })

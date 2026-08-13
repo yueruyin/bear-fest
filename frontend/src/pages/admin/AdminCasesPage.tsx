@@ -33,6 +33,15 @@ import {
 } from 'lucide-react'
 import { adminFetch, adminUpload } from '../../admin/api'
 import { resolveMediaUrl } from '../../media'
+import {
+  CASE_EVENT_TYPES,
+  CASE_EVENT_TYPE_LABELS,
+  isCaseEventType,
+  isCasePublishStatus,
+  type CaseEventType,
+  type CasePublishStatus,
+  type ResultMetric,
+} from '../../types'
 
 type CaseItem = {
   id: number
@@ -62,7 +71,7 @@ type CaseDetail = CaseItem & {
 type CaseForm = {
   title: string
   slug: string
-  event_type: string
+  event_type: CaseEventType
   summary: string
   cover_image_url: string
   gallery_urls: string
@@ -74,7 +83,7 @@ type CaseForm = {
   tags: string
   seo_title: string
   seo_description: string
-  publish_status: string
+  publish_status: CasePublishStatus
   published_at: string | null
 }
 
@@ -102,7 +111,7 @@ type ExecutionHighlight = {
   description: string
 }
 
-type ResultMetric = {
+type EditableResultMetric = {
   label: string
   value: string
   description: string
@@ -134,13 +143,10 @@ const EMPTY_FORM: CaseForm = {
   published_at: null,
 }
 
-const EVENT_TYPES = [
-  { value: 'sports', label: '赛事活动' },
-  { value: 'carnival', label: '城市嘉年华' },
-  { value: 'market', label: '潮流集市' },
-  { value: 'annual', label: '企业年会' },
-  { value: 'brand', label: '品牌活动' },
-] as const
+const EVENT_TYPES = CASE_EVENT_TYPES.map((value) => ({
+  value,
+  label: CASE_EVENT_TYPE_LABELS[value],
+}))
 
 const PUBLISH_STATUS_OPTIONS = [
   { value: 'draft', label: '草稿', help: '仅后台可见' },
@@ -219,6 +225,16 @@ function jsonObjectArrayToItems<T extends object>(value: string | null | undefin
   }
 }
 
+function resultMetricsToItems(value: string | null | undefined): EditableResultMetric[] {
+  return jsonObjectArrayToItems<ResultMetric>(value)
+    .filter((item) => typeof item.label === 'string' && typeof item.value === 'string')
+    .map((item) => ({
+      label: item.label,
+      value: item.value,
+      description: typeof item.description === 'string' ? item.description : '',
+    }))
+}
+
 function getEventTypeLabel(value: string) {
   return EVENT_TYPES.find((item) => item.value === value)?.label || value || '未分类'
 }
@@ -278,7 +294,7 @@ function detailToForm(detail: CaseDetail): CaseForm {
   return {
     title: detail.title || '',
     slug: detail.slug || '',
-    event_type: detail.event_type || 'sports',
+    event_type: isCaseEventType(detail.event_type) ? detail.event_type : 'sports',
     summary: detail.summary || '',
     cover_image_url: detail.cover_image_url || '',
     gallery_urls: detail.gallery_urls || '[]',
@@ -290,7 +306,9 @@ function detailToForm(detail: CaseDetail): CaseForm {
     tags: detail.tags || '[]',
     seo_title: detail.seo_title || '',
     seo_description: detail.seo_description || '',
-    publish_status: detail.publish_status || 'draft',
+    publish_status: isCasePublishStatus(detail.publish_status)
+      ? detail.publish_status
+      : 'draft',
     published_at: detail.published_at,
   }
 }
@@ -311,7 +329,7 @@ function cleanForm(form: CaseForm): CaseForm {
       ),
     ),
     result_metrics: JSON.stringify(
-      jsonObjectArrayToItems<ResultMetric>(form.result_metrics).filter(
+      resultMetricsToItems(form.result_metrics).filter(
         (item) => item.label.trim() || item.value.trim() || item.description.trim(),
       ),
     ),
@@ -423,7 +441,7 @@ export function AdminCasesPage() {
     [form.execution_highlights],
   )
   const metricItems = useMemo(
-    () => jsonObjectArrayToItems<ResultMetric>(form.result_metrics),
+    () => resultMetricsToItems(form.result_metrics),
     [form.result_metrics],
   )
   const isDirty = useMemo(
@@ -497,10 +515,12 @@ export function AdminCasesPage() {
       ...EMPTY_FORM,
       title: item.title,
       slug: item.slug,
-      event_type: item.event_type,
+      event_type: isCaseEventType(item.event_type) ? item.event_type : 'sports',
       summary: item.summary,
       cover_image_url: item.cover_image_url,
-      publish_status: item.publish_status,
+      publish_status: isCasePublishStatus(item.publish_status)
+        ? item.publish_status
+        : 'draft',
       published_at: item.published_at,
     }
     setEditing(item)
@@ -609,11 +629,15 @@ export function AdminCasesPage() {
     setHighlightItems(nextItems)
   }
 
-  const setMetricItems = (items: ResultMetric[]) => {
+  const setMetricItems = (items: EditableResultMetric[]) => {
     updateForm('result_metrics', JSON.stringify(items))
   }
 
-  const updateMetric = (index: number, field: keyof ResultMetric, value: string) => {
+  const updateMetric = (
+    index: number,
+    field: keyof EditableResultMetric,
+    value: string,
+  ) => {
     const nextItems = metricItems.map((item, itemIndex) =>
       itemIndex === index ? { ...item, [field]: value } : item,
     )
@@ -1160,7 +1184,11 @@ export function AdminCasesPage() {
                     <span>活动类型</span>
                     <select
                       value={form.event_type}
-                      onChange={(event) => updateForm('event_type', event.target.value)}
+                      onChange={(event) => {
+                        if (isCaseEventType(event.target.value)) {
+                          updateForm('event_type', event.target.value)
+                        }
+                      }}
                     >
                       {EVENT_TYPES.map((item) => (
                         <option key={item.value} value={item.value}>
