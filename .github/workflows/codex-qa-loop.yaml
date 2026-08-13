@@ -82,21 +82,22 @@ jobs:
             npm install
           fi
 
+- name: Check Codex environment
+  run: |
+    echo "PATH=$PATH"
+    command -v codex
+    codex --version
+    codex login status
+
       - name: Run Codex QA
-        run: codex exec ...
-        with:
-          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-
-          prompt-file: .github/codex/prompts/qa.md
-
-          sandbox: workspace-write
-
-          codex-args: >
-            ["--ephemeral",
-             "--output-schema",
-             ".github/codex/schemas/qa-result.schema.json"]
-
-          output-file: qa-result.json
+        shell: bash
+        run: |
+          codex exec \
+            --ephemeral \
+            --sandbox workspace-write \
+            --output-schema .github/codex/schemas/qa-result.schema.json \
+            --output-last-message qa-result.json \
+            < .github/codex/prompts/qa.md
 
       - name: Upload QA result
         uses: actions/upload-artifact@v4
@@ -238,16 +239,19 @@ jobs:
             npm install
           fi
 
+      - name: Check Codex environment
+        run: |
+          command -v codex
+          codex --version
+          codex login status
+
       - name: Codex fix QA bugs
-        run: codex exec ...
-        with:
-          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-
-          prompt-file: .github/codex/prompts/fix.md
-
-          sandbox: workspace-write
-
-          codex-args: '["--ephemeral"]'
+        shell: bash
+        run: |
+          codex exec \
+            --ephemeral \
+            --sandbox workspace-write \
+            < .github/codex/prompts/fix.md
 
       - name: Build patch
         id: diff
