@@ -117,6 +117,7 @@ def test_invalid_highlight_and_metric_json_is_rejected(
     invalid_structure = dict(
         complete_case_payload,
         execution_highlights='[{"title":"A","description":"说明长度足够但标题太短"}]',
+        publish_status="published",
     )
     assert client.post(
         "/api/admin/cases", json=invalid_structure, headers=admin_headers
@@ -129,6 +130,53 @@ def test_invalid_highlight_and_metric_json_is_rejected(
     assert client.post(
         "/api/admin/cases", json=invalid_metric, headers=admin_headers
     ).status_code == 422
+
+
+def test_draft_accepts_incomplete_highlights_and_metrics_on_create_and_update(
+    client: TestClient,
+    admin_headers: dict[str, str],
+    complete_case_payload: dict[str, object],
+) -> None:
+    incomplete_highlights = '[{"title":"待完善","description":"简述"}]'
+    incomplete_metrics = '[{"label":"参与人数","value":"","description":""}]'
+    payload = dict(
+        complete_case_payload,
+        execution_highlights=incomplete_highlights,
+        result_metrics=incomplete_metrics,
+        publish_status="draft",
+    )
+
+    created = client.post("/api/admin/cases", json=payload, headers=admin_headers)
+
+    assert created.status_code == 201, created.text
+    case_id = created.json()["id"]
+    detail = client.get(f"/api/admin/cases/{case_id}", headers=admin_headers)
+    assert detail.status_code == 200
+    assert detail.json()["execution_highlights"] == incomplete_highlights
+    assert detail.json()["result_metrics"] == incomplete_metrics
+
+    update_payload = {
+        key: value for key, value in payload.items() if key != "slug"
+    }
+    update_payload["execution_highlights"] = (
+        '[{"title":"A","description":""}]'
+    )
+    update_payload["result_metrics"] = (
+        '[{"label":"","value":"100人","description":""}]'
+    )
+    updated = client.put(
+        f"/api/admin/cases/{case_id}", json=update_payload, headers=admin_headers
+    )
+
+    assert updated.status_code == 200, updated.text
+    updated_detail = client.get(
+        f"/api/admin/cases/{case_id}", headers=admin_headers
+    )
+    assert updated_detail.status_code == 200
+    assert updated_detail.json()["execution_highlights"] == update_payload[
+        "execution_highlights"
+    ]
+    assert updated_detail.json()["result_metrics"] == update_payload["result_metrics"]
 
 
 @pytest.mark.parametrize("description", [None, "", "统计口径为现场签到人数"])

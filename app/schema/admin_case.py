@@ -24,6 +24,7 @@ def _validate_object_array(
     *,
     max_items: int,
     fields: dict[str, tuple[int, int, bool]],
+    enforce_minimums: bool = True,
 ) -> str:
     parsed = _parse_json_array(value, field_name)
     if len(parsed) > max_items:
@@ -39,7 +40,7 @@ def _validate_object_array(
             if not isinstance(field_value, str):
                 raise ValueError(f"{field_name}[{index}].{key} must be a string")
             length = len(field_value.strip())
-            if length < min_length or length > max_length:
+            if (enforce_minimums and length < min_length) or length > max_length:
                 raise ValueError(
                     f"{field_name}[{index}].{key} must be {min_length}-{max_length} characters"
                 )
@@ -70,6 +71,7 @@ class CaseWriteBase(BaseModel):
             "execution_highlights",
             max_items=6,
             fields={"title": (2, 40, False), "description": (10, 500, False)},
+            enforce_minimums=False,
         )
 
     @field_validator("result_metrics")
@@ -84,6 +86,7 @@ class CaseWriteBase(BaseModel):
                 "value": (1, 30, False),
                 "description": (0, 100, True),
             },
+            enforce_minimums=False,
         )
 
     @model_validator(mode="after")
@@ -95,6 +98,22 @@ class CaseWriteBase(BaseModel):
         goals = (self.project_goals or "").strip()
         highlights = _parse_json_array(
             self.execution_highlights, "execution_highlights"
+        )
+        _validate_object_array(
+            self.execution_highlights,
+            "execution_highlights",
+            max_items=6,
+            fields={"title": (2, 40, False), "description": (10, 500, False)},
+        )
+        _validate_object_array(
+            self.result_metrics,
+            "result_metrics",
+            max_items=6,
+            fields={
+                "label": (1, 20, False),
+                "value": (1, 30, False),
+                "description": (0, 100, True),
+            },
         )
         errors = []
         if not 20 <= len(background) <= 2000:
