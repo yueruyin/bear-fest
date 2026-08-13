@@ -82,12 +82,12 @@ jobs:
             npm install
           fi
 
-- name: Check Codex environment
-  run: |
-    echo "PATH=$PATH"
-    command -v codex
-    codex --version
-    codex login status
+      - name: Check Codex environment
+        run: |
+          echo "PATH=$PATH"
+          command -v codex
+          codex --version
+          codex login status
 
       - name: Run Codex QA
         shell: bash
