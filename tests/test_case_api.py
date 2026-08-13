@@ -370,3 +370,133 @@ def test_historical_empty_fields_remain_publicly_readable(
     assert data["project_background"] is None
     assert data["execution_highlights"] is None
     assert data["gallery_urls"] == '["/uploads/cases/history-1.jpg"]'
+
+
+def test_historical_minimal_published_case_can_save_basic_changes(
+    client: TestClient,
+    admin_headers: dict[str, str],
+    db_session: Session,
+) -> None:
+    historical = Case(
+        title="历史最小案例",
+        slug="historical-minimal-update",
+        event_type="market",
+        summary="历史案例只保留经过确认的基础内容。",
+        cover_image_url="/uploads/cases/history.jpg",
+        gallery_urls="[]",
+        project_background=None,
+        project_goals=None,
+        execution_highlights=None,
+        result_metrics=None,
+        result_summary=None,
+        publish_status="published",
+        published_at=datetime(2026, 8, 1, 9, 0, 0),
+        tags="[]",
+        seo_title="",
+        seo_description="",
+    )
+    db_session.add(historical)
+    db_session.commit()
+    db_session.execute(
+        text(
+            "UPDATE cases SET execution_highlights = NULL, result_metrics = NULL "
+            "WHERE id = :case_id"
+        ),
+        {"case_id": historical.id},
+    )
+    db_session.commit()
+
+    response = client.put(
+        f"/api/admin/cases/{historical.id}",
+        headers=admin_headers,
+        json={
+            "title": "历史最小案例（已更新）",
+            "event_type": "market",
+            "summary": historical.summary,
+            "cover_image_url": historical.cover_image_url,
+            "gallery_urls": historical.gallery_urls,
+            "project_background": None,
+            "project_goals": None,
+            "execution_highlights": "[]",
+            "result_metrics": "[]",
+            "result_summary": None,
+            "tags": historical.tags,
+            "seo_title": "历史案例 SEO 标题",
+            "seo_description": "",
+            "publish_status": "published",
+            "published_at": historical.published_at.isoformat(),
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    db_session.expire_all()
+    stored = db_session.get(Case, historical.id)
+    assert stored is not None
+    assert stored.title == "历史最小案例（已更新）"
+    assert stored.seo_title == "历史案例 SEO 标题"
+    assert stored.publish_status == "published"
+    assert stored.execution_highlights is None
+    assert stored.result_metrics is None
+
+
+def test_historical_minimal_published_case_cannot_bypass_review_validation(
+    client: TestClient,
+    admin_headers: dict[str, str],
+    db_session: Session,
+) -> None:
+    historical = Case(
+        title="历史最小案例",
+        slug="historical-minimal-review-change",
+        event_type="market",
+        summary="历史案例只保留经过确认的基础内容。",
+        cover_image_url="/uploads/cases/history.jpg",
+        gallery_urls="[]",
+        project_background=None,
+        project_goals=None,
+        execution_highlights=None,
+        result_metrics=None,
+        result_summary=None,
+        publish_status="published",
+        published_at=datetime(2026, 8, 1, 9, 0, 0),
+        tags="[]",
+        seo_title="",
+        seo_description="",
+    )
+    db_session.add(historical)
+    db_session.commit()
+    db_session.execute(
+        text(
+            "UPDATE cases SET execution_highlights = NULL, result_metrics = NULL "
+            "WHERE id = :case_id"
+        ),
+        {"case_id": historical.id},
+    )
+    db_session.commit()
+
+    response = client.put(
+        f"/api/admin/cases/{historical.id}",
+        headers=admin_headers,
+        json={
+            "title": historical.title,
+            "event_type": "market",
+            "summary": historical.summary,
+            "cover_image_url": historical.cover_image_url,
+            "gallery_urls": historical.gallery_urls,
+            "project_background": "尚未达到发布长度",
+            "project_goals": None,
+            "execution_highlights": "[]",
+            "result_metrics": "[]",
+            "result_summary": None,
+            "tags": historical.tags,
+            "seo_title": "",
+            "seo_description": "",
+            "publish_status": "published",
+            "published_at": historical.published_at.isoformat(),
+        },
+    )
+
+    assert response.status_code == 422
+    db_session.expire_all()
+    stored = db_session.get(Case, historical.id)
+    assert stored is not None
+    assert stored.project_background is None

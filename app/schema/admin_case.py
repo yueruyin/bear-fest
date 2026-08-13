@@ -89,8 +89,7 @@ class CaseWriteBase(BaseModel):
             enforce_minimums=False,
         )
 
-    @model_validator(mode="after")
-    def validate_publish_completeness(self):
+    def require_publish_completeness(self):
         if self.publish_status is not CasePublishStatus.PUBLISHED:
             return self
 
@@ -168,6 +167,10 @@ class CaseAdminDetail(BaseModel):
 
 class CaseCreateIn(CaseWriteBase):
     slug: str = Field(min_length=1, max_length=200)
+
+    @model_validator(mode="after")
+    def validate_publish_completeness(self):
+        return self.require_publish_completeness()
 
 
 class CaseUpdateIn(CaseWriteBase):

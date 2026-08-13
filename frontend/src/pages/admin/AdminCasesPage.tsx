@@ -459,13 +459,28 @@ export function AdminCasesPage() {
       ) &&
       metricItems.every((item) => item.label.trim() && item.value.trim()),
   )
+  const preservesPublishedReview = Boolean(
+    editing?.publish_status === 'published' &&
+      savedForm.publish_status === 'published' &&
+      form.publish_status === 'published' &&
+      form.project_background === savedForm.project_background &&
+      form.project_goals === savedForm.project_goals &&
+      form.execution_highlights === savedForm.execution_highlights &&
+      form.result_metrics === savedForm.result_metrics &&
+      form.result_summary === savedForm.result_summary,
+  )
+  const reviewRequirementIsSatisfied = reviewIsComplete || preservesPublishedReview
   const mediaIsComplete = Boolean(form.cover_image_url.trim())
   const seoIsComplete = Boolean(form.seo_title.trim() || form.seo_description.trim())
-  const completedRequired = [contentIsComplete, reviewIsComplete, mediaIsComplete].filter(Boolean).length
+  const completedRequired = [
+    contentIsComplete,
+    reviewRequirementIsSatisfied,
+    mediaIsComplete,
+  ].filter(Boolean).length
   const isValid =
     contentIsComplete &&
     mediaIsComplete &&
-    (form.publish_status !== 'published' || reviewIsComplete)
+    (form.publish_status !== 'published' || reviewRequirementIsSatisfied)
   const isBusy = saving || detailLoading || coverUploading || galleryUploading
 
   useEffect(() => {
@@ -692,7 +707,7 @@ export function AdminCasesPage() {
       setSaveFeedback({ type: 'error', text: '请先上传或填写案例封面图。' })
       return
     }
-    if (form.publish_status === 'published' && !reviewIsComplete) {
+    if (form.publish_status === 'published' && !reviewRequirementIsSatisfied) {
       focusInvalidField('review')
       setSaveFeedback({
         type: 'error',
@@ -784,7 +799,7 @@ export function AdminCasesPage() {
     loadItems,
     loadStats,
     mediaIsComplete,
-    reviewIsComplete,
+    reviewRequirementIsSatisfied,
   ])
 
   useEffect(() => {

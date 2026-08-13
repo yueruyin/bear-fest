@@ -1,5 +1,6 @@
 import csv
 import io
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -52,6 +53,28 @@ def _china_today_start_utc_naive() -> datetime:
 
 def _parse_int(value: int, min_value: int, max_value: int) -> int:
     return max(min_value, min(int(value), max_value))
+
+
+def _same_json_array(existing: str | None, requested: str) -> bool:
+    try:
+        return json.loads(existing or "[]") == json.loads(requested or "[]")
+    except (TypeError, json.JSONDecodeError):
+        return existing == requested
+
+
+def _preserves_published_case_review(case: Case, payload: CaseUpdateIn) -> bool:
+    return (
+        case.publish_status == CasePublishStatus.PUBLISHED.value
+        and payload.publish_status is CasePublishStatus.PUBLISHED
+        and (case.project_background or "").strip()
+        == (payload.project_background or "").strip()
+        and (case.project_goals or "").strip()
+        == (payload.project_goals or "").strip()
+        and _same_json_array(case.execution_highlights, payload.execution_highlights)
+        and _same_json_array(case.result_metrics, payload.result_metrics)
+        and (case.result_summary or "").strip()
+        == (payload.result_summary or "").strip()
+    )
 
 
 def _detect_image_suffix(file_bytes: bytes) -> str | None:
@@ -417,16 +440,24 @@ def admin_update_case(
     if not case:
         raise HTTPException(status_code=404, detail="case not found")
 
+    preserves_published_review = _preserves_published_case_review(case, payload)
+    if not preserves_published_review:
+        try:
+            payload.require_publish_completeness()
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
     case.title = payload.title
     case.event_type = payload.event_type.value
     case.summary = payload.summary
     case.cover_image_url = payload.cover_image_url
     case.gallery_urls = payload.gallery_urls
-    case.project_background = payload.project_background
-    case.project_goals = payload.project_goals
-    case.execution_highlights = payload.execution_highlights
-    case.result_metrics = payload.result_metrics
-    case.result_summary = payload.result_summary
+    if not preserves_published_review:
+        case.project_background = payload.project_background
+        case.project_goals = payload.project_goals
+        case.execution_highlights = payload.execution_highlights
+        case.result_metrics = payload.result_metrics
+        case.result_summary = payload.result_summary
     case.tags = payload.tags
     case.seo_title = payload.seo_title
     case.seo_description = payload.seo_description
