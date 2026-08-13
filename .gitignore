@@ -4,6 +4,7 @@ app/api/uploads/
 
 # Python 缓存文件
 __pycache__/
+.pytest_cache/
 *.py[cod]
 *$py.class
 *.so

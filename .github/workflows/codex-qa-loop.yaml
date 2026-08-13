@@ -1,0 +1,333 @@
+name: Codex QA Auto Fix
+
+on:
+  pull_request:
+    branches: [main]
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+concurrency:
+  group: codex-qa-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+
+  qa:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+
+      - name: Checkout PR
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch base
+        run: |
+          git fetch origin "${{ github.event.pull_request.base.ref }}"
+
+      - name: Prepare PR context
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+        run: |
+          mkdir -p .codex-context
+
+          {
+            echo "# Pull Request"
+            echo
+            echo "Number: $PR_NUMBER"
+            echo "Base: $BASE_BRANCH"
+            echo
+            echo "## Title"
+            echo "$PR_TITLE"
+            echo
+            echo "## Body"
+            echo "$PR_BODY"
+          } > .codex-context/pr.md
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install frontend
+        run: |
+          cd frontend
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Run Codex QA
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+
+          prompt-file: .github/codex/prompts/qa.md
+
+          sandbox: workspace-write
+
+          codex-args: >
+            ["--ephemeral",
+             "--output-schema",
+             ".github/codex/schemas/qa-result.schema.json"]
+
+          output-file: qa-result.json
+
+      - name: Upload QA result
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-result
+          path: qa-result.json
+
+
+  report:
+    needs: qa
+    runs-on: ubuntu-latest
+
+    permissions:
+      issues: write
+      pull-requests: write
+
+    outputs:
+      status: ${{ steps.result.outputs.status }}
+      autofix: ${{ steps.result.outputs.autofix }}
+
+    steps:
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: qa-result
+
+      - id: result
+        run: |
+          echo "status=$(jq -r '.status' qa-result.json)" >> "$GITHUB_OUTPUT"
+          echo "autofix=$(jq -r '.should_autofix' qa-result.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Post QA report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+
+            const result = fs.readFileSync(
+              "qa-result.json",
+              "utf8"
+            );
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body:
+                "## 🤖 Codex QA\n\n```json\n" +
+                result +
+                "\n```"
+            });
+
+
+  retry_guard:
+    needs: report
+
+    if: >
+      needs.report.outputs.status == 'FAIL' &&
+      needs.report.outputs.autofix == 'true'
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    outputs:
+      retry_count: ${{ steps.count.outputs.retry_count }}
+
+    steps:
+
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - id: count
+        run: |
+          count=$(
+            git log --format='%s' |
+            grep -c '^fix: codex qa autofix' || true
+          )
+
+          echo "retry_count=$count" >> "$GITHUB_OUTPUT"
+
+
+  generate_fix:
+    needs:
+      - report
+      - retry_guard
+
+    if: >
+      needs.report.outputs.status == 'FAIL' &&
+      needs.report.outputs.autofix == 'true' &&
+      fromJSON(needs.retry_guard.outputs.retry_count) < 3
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    outputs:
+      has_patch: ${{ steps.diff.outputs.has_patch }}
+
+    steps:
+
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: qa-result
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: |
+          pip install -r requirements.txt
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - run: |
+          cd frontend
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Codex fix QA bugs
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+
+          prompt-file: .github/codex/prompts/fix.md
+
+          sandbox: workspace-write
+
+          codex-args: '["--ephemeral"]'
+
+      - name: Build patch
+        id: diff
+        run: |
+          git add -N .
+          git diff --binary HEAD > codex-fix.patch
+
+          if [ -s codex-fix.patch ]; then
+            echo "has_patch=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_patch=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload patch
+        if: steps.diff.outputs.has_patch == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-fix-patch
+          path: codex-fix.patch
+
+
+  apply_fix:
+    needs:
+      - generate_fix
+
+    if: needs.generate_fix.outputs.has_patch == 'true'
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          token: ${{ secrets.CODEX_GH_PAT }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: codex-fix-patch
+
+      - name: Apply patch
+        run: |
+          git apply --index codex-fix.patch
+
+      - name: Commit and push
+        env:
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git config user.name "codex-qa-bot"
+          git config user.email "codex-qa-bot@users.noreply.github.com"
+
+          git commit \
+            -m "fix: codex qa autofix PR #${{ github.event.pull_request.number }}"
+
+          git push origin HEAD:"$HEAD_BRANCH"
+
+
+  needs_human:
+    needs:
+      - report
+      - retry_guard
+
+    if: >
+      needs.report.outputs.status == 'FAIL' &&
+      needs.report.outputs.autofix == 'true' &&
+      fromJSON(needs.retry_guard.outputs.retry_count) >= 3
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body:
+                "## ⚠️ needs-human\n\n" +
+                "Codex 已自动修复 3 轮，QA 仍未通过。" +
+                "自动循环已停止，需要人工介入。"
+            });
