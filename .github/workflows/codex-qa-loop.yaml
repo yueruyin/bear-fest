@@ -8,6 +8,12 @@ on:
       - synchronize
       - reopened
 
+env:
+  http_proxy: http://127.0.0.1:7897
+  https_proxy: http://127.0.0.1:7897
+  HTTP_PROXY: http://127.0.0.1:7897
+  HTTPS_PROXY: http://127.0.0.1:7897
+
 concurrency:
   group: codex-qa-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -58,20 +64,64 @@ jobs:
             echo "$PR_BODY"
           } > .codex-context/pr.md
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+      - name: Configure local toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # macOS service runners do not inherit your interactive shell PATH.
+          # Add common Homebrew / local / npm / nvm locations explicitly.
+          for dir in \
+            /opt/homebrew/bin \
+            /opt/homebrew/sbin \
+            /usr/local/bin \
+            "$HOME/.local/bin" \
+            "$HOME/.npm-global/bin" \
+            "$HOME/miniconda3/bin" \
+            "$HOME/anaconda3/bin" \
+            "$HOME/miniforge3/bin" \
+            "$HOME/mambaforge/bin"; do
+            if [ -d "$dir" ]; then
+              echo "$dir" >> "$GITHUB_PATH"
+            fi
+          done
+
+          # If Node was installed with nvm, expose the newest installed Node bin dir.
+          if [ -d "$HOME/.nvm/versions/node" ]; then
+            node_bin=$(find "$HOME/.nvm/versions/node" -mindepth 2 -maxdepth 2 -type d -name bin 2>/dev/null | sort -V | tail -n 1 || true)
+            if [ -n "$node_bin" ]; then
+              echo "$node_bin" >> "$GITHUB_PATH"
+              export PATH="$node_bin:$PATH"
+            fi
+          fi
+
+          export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:$HOME/.local/bin:$HOME/.npm-global/bin:$HOME/miniconda3/bin:$HOME/anaconda3/bin:$HOME/miniforge3/bin:$HOME/mambaforge/bin:$PATH"
+
+          echo "Python:"
+          command -v python3.11
+          python3.11 --version
+
+          echo "Node:"
+          command -v node
+          node --version
+
+          echo "npm:"
+          command -v npm
+          npm --version
+
+          echo "Codex:"
+          command -v codex
+          codex --version
+          codex login status
 
       - name: Install backend
+        shell: bash
         run: |
+          python3.11 -m venv .ci-venv
+          source .ci-venv/bin/activate
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
+          python -m pip install -r requirements.txt
+          echo "$GITHUB_WORKSPACE/.ci-venv/bin" >> "$GITHUB_PATH"
 
       - name: Install frontend
         run: |
@@ -81,13 +131,6 @@ jobs:
           else
             npm install
           fi
-
-      - name: Check Codex environment
-        run: |
-          echo "PATH=$PATH"
-          command -v codex
-          codex --version
-          codex login status
 
       - name: Run Codex QA
         shell: bash
@@ -219,17 +262,54 @@ jobs:
         with:
           name: qa-result
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+      - name: Configure local toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
 
-      - run: |
-          pip install -r requirements.txt
+          for dir in \
+            /opt/homebrew/bin \
+            /opt/homebrew/sbin \
+            /usr/local/bin \
+            "$HOME/.local/bin" \
+            "$HOME/.npm-global/bin" \
+            "$HOME/miniconda3/bin" \
+            "$HOME/anaconda3/bin" \
+            "$HOME/miniforge3/bin" \
+            "$HOME/mambaforge/bin"; do
+            if [ -d "$dir" ]; then
+              echo "$dir" >> "$GITHUB_PATH"
+            fi
+          done
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
+          if [ -d "$HOME/.nvm/versions/node" ]; then
+            node_bin=$(find "$HOME/.nvm/versions/node" -mindepth 2 -maxdepth 2 -type d -name bin 2>/dev/null | sort -V | tail -n 1 || true)
+            if [ -n "$node_bin" ]; then
+              echo "$node_bin" >> "$GITHUB_PATH"
+              export PATH="$node_bin:$PATH"
+            fi
+          fi
+
+          export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:$HOME/.local/bin:$HOME/.npm-global/bin:$HOME/miniconda3/bin:$HOME/anaconda3/bin:$HOME/miniforge3/bin:$HOME/mambaforge/bin:$PATH"
+
+          command -v python3.11
+          python3.11 --version
+          command -v node
+          node --version
+          command -v npm
+          npm --version
+          command -v codex
+          codex --version
+          codex login status
+
+      - name: Install backend
+        shell: bash
+        run: |
+          python3.11 -m venv .ci-venv
+          source .ci-venv/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          echo "$GITHUB_WORKSPACE/.ci-venv/bin" >> "$GITHUB_PATH"
 
       - run: |
           cd frontend
@@ -238,12 +318,6 @@ jobs:
           else
             npm install
           fi
-
-      - name: Check Codex environment
-        run: |
-          command -v codex
-          codex --version
-          codex login status
 
       - name: Codex fix QA bugs
         shell: bash
