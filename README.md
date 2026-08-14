@@ -152,6 +152,17 @@ ADMIN_BOOTSTRAP_USERNAME=admin ADMIN_BOOTSTRAP_PASSWORD=your-strong-password pyt
 ## 常用命令
 
 ```bash
+# 安装后端测试依赖并运行全部后端测试
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+pytest
+
+# 运行前端测试
+cd frontend
+npm install
+npm test
+
 # 前端构建
 cd frontend
 npm run build
@@ -204,6 +215,9 @@ npm run test:e2e
 ```bash
 PYTHON_BIN=/path/to/python ./scripts/verify.sh
 ```
+
+案例复盘字段的 SQLite/MySQL 上线、验证、历史数据核对与回滚步骤见
+[Issue #2 案例复盘字段迁移说明](docs/case-content-migration.md)。
 
 ## API 概览
 

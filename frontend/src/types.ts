@@ -6,6 +6,30 @@ export type SiteConfig = {
   contact_channels: string
 }
 
+export const CASE_EVENT_TYPE_LABELS = {
+  sports: '赛事活动',
+  carnival: '城市嘉年华',
+  market: '潮流集市',
+  annual: '企业年会',
+  brand: '品牌活动',
+} as const
+
+export type CaseEventType = keyof typeof CASE_EVENT_TYPE_LABELS
+
+export const CASE_EVENT_TYPES = Object.keys(CASE_EVENT_TYPE_LABELS) as CaseEventType[]
+
+export const CASE_PUBLISH_STATUSES = ['draft', 'published'] as const
+
+export type CasePublishStatus = (typeof CASE_PUBLISH_STATUSES)[number]
+
+export function isCaseEventType(value: string): value is CaseEventType {
+  return value in CASE_EVENT_TYPE_LABELS
+}
+
+export function isCasePublishStatus(value: string): value is CasePublishStatus {
+  return CASE_PUBLISH_STATUSES.includes(value as CasePublishStatus)
+}
+
 export type CaseItem = {
   id: number
   title: string
@@ -17,8 +41,24 @@ export type CaseItem = {
   published_at: string | null
   tags: string
   gallery_urls?: string
+  project_background?: string | null
+  project_goals?: string | null
+  execution_highlights?: string | null
+  result_metrics?: string | null
+  result_summary?: string | null
   seo_title?: string
   seo_description?: string
+}
+
+export type ExecutionHighlight = {
+  title: string
+  description: string
+}
+
+export type ResultMetric = {
+  label: string
+  value: string
+  description?: string | null
 }
 
 export type LeadForm = {
